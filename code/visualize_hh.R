@@ -6,6 +6,7 @@ library(tidyverse)
 source("code/data_path.R")
 
 fl_cnt_shp <- shapefile(fl_cnt)
+fl_hh_r <- raster(fl_hh)
 hh_xy <- read_csv("output/hh_coords.csv")
 
 #### Visualization
