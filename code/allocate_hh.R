@@ -13,7 +13,7 @@ cenacs_wgs <- cenacs %>% spTransform(crs(fl_hh_r))
 
 dat <- read_rds(ipums_file)
 hh_dat <- dat %>%
-  select(YEAR, SERIAL, HHWT, PUMA) %>%
+  select(YEAR, SERIAL, HHWT, PUMA, GQ) %>%
   distinct()
 
 # IPUMS has PUMA but shape has census tract
@@ -133,12 +133,52 @@ for (i in 1:length(pumas)) {
 hh_xy_puma$HID <- 1:nrow(hh_xy_puma)
 
 dat_person <- dat %>%
-  select(YEAR, SERIAL, SEX, AGE, SCHOOL, EMPSTATD, PWSTATE2, PWCOUNTY, PWPUMA00)
+  select(YEAR, SERIAL, SEX, AGE, SCHOOL, EMPSTATD, PWSTATE2, PWCOUNTY, PWPUMA00, GQ)
 person_xy <- hh_xy_puma %>%
   left_join(dat_person)
 person_xy$PID <- 1:nrow(person_xy)
 
-write_csv(hh_xy_puma %>% select(HID, x, y),
+# Move GQ == 3 and AGE >= 55 people to NH
+nh_pop <- person_xy %>%
+  filter(GQ == 3, AGE >= 55)
+nh <- read_csv("output/nh.csv")
+
+nh_pop$NHID <- NA
+for (i in 1:length(pumas)) {
+  print(i)
+  cond <- nh_pop$PUMA5CE == pumas[i]
+  
+  if (sum(cond) == 0) next
+  
+  nh_samp <- nh %>%
+    filter(PUMA5CE == pumas[i]) %>%
+    sample_n(size = sum(cond), 
+             replace = T,
+             weight = REP_POP)
+  
+  nh_pop[cond,c("x", "y", "NHID")] <- nh_samp[,c("X", "Y", "NHID")]
+}  
+
+# Bring nh_pop coordinates to hh_xy_puma
+# Bring nh_pop id to main pop df (ignore the coordinates since
+# final pop df won't have coordinates)
+hh_xy_puma[nh_pop$HID, c("x", "y")] <- nh_pop[, c("x", "y")]
+person_xy <- person_xy %>% left_join(nh_pop %>% select(PID, NHID))
+
+# Tabulate "population" of nh
+nh_pop_count <- nh_pop %>%
+  group_by(NHID) %>%
+  count()
+nh <- nh %>% left_join(nh_pop_count)
+nh <- rename(nh, POP = n)
+
+# Assign worker size to nh based on ratio 1:6 (with ceiling)
+nh$WORKER <- ceiling(nh$POP / 6)
+sum(nh$WORKER, na.rm = T)
+
+write_csv(hh_xy_puma %>% select(HID, x, y, SERIAL, PUMA5CE),
           "output/hh_coords.csv")
-write_csv(person_xy %>% select(PID, HID, x, y, SEX, AGE, SCHOOL, EMPSTATD, PWSTATE2, PWPUMA00),
+write_csv(person_xy %>% select(PID, HID, NHID, SEX, AGE, SCHOOL, EMPSTATD, PWSTATE2, PWPUMA00, GQ),
           "output/person_details.csv")
+write_csv(nh %>% select(NHID, x = X, y = Y, WORKER, POP, PUMA5CE, REP_POP),
+          "output/nh.csv")
