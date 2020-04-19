@@ -8,7 +8,8 @@ library(tcltk)
 
 source("code/data_path.R")
 
-gc_sch <- shapefile(fl_gcsch)
+untar(fl_gcsch, exdir = "./tmp")
+gc_sch <- shapefile("./tmp/gc_schools/gc_schools_sep17.shp")
 head(gc_sch)
 table(gc_sch$FLAG, useNA = "ifany")
 table(gc_sch$TYPE, useNA = "ifany")
@@ -57,16 +58,19 @@ gc_sch1 <- gc_sch1 %>%
 # For college/university, disable some which are non "classrooms"
 cu <- gc_sch1 %>%
   filter(TYPE == "COLLEGE/UNIVERSITY") %>%
-  group_by(OWNER) %>%
-  mutate(n = n()) %>%
-  filter(n > 1) %>%
-  arrange(desc(n), OWNER)
-cu
+  arrange(NAME)
+# write_csv(cu, "tmp/cu.csv") # For when cu_wsize.csv is not available
+cu1 <- read_csv("data/cu_wsize.csv") %>%
+  dplyr::select(AUTOID, Population) %>%
+  mutate(AUTOID = as.character(AUTOID))
+cu <- cu %>%
+  left_join(cu1)
+gc_sch1 <- bind_rows(gc_sch1 %>% filter(TYPE != "COLLEGE/UNIVERSITY"), cu)
 
-disab_ind <- c(1:7, 10:15, 17:27, 33:35, 47, 57, 60, 118, 119, 129, 137, 144, 159, 168, 170, 183)
-name <- cu$NAME[disab_ind]
-gc_sch1$AGELO[gc_sch1$NAME %in% name] <- 0
-gc_sch1$AGEHI[gc_sch1$NAME %in% name] <- 0
+# disab_ind <- c(1:7, 10:15, 17:27, 33:35, 47, 57, 60, 118, 119, 129, 137, 144, 159, 168, 170, 183)
+# name <- cu$NAME[disab_ind]
+# gc_sch1$AGELO[gc_sch1$NAME %in% name] <- 0
+# gc_sch1$AGEHI[gc_sch1$NAME %in% name] <- 0
 
 #### Assign students to schools
 ## Schools coordinates
@@ -75,7 +79,7 @@ colnames(sch_coord) <- c("AUTOID", "x", "y")
 sch_coord <- as.data.frame(sch_coord)
 
 gc_sch2 <- gc_sch1 %>%
-  select(AUTOID, AGELO, AGEHI) %>%
+  select(AUTOID, AGELO, AGEHI, Population) %>%
   mutate(AUTOID = as.numeric(AUTOID)) %>%
   left_join(sch_coord)
 gc_sch2$SID <- 1:nrow(gc_sch2)
@@ -102,8 +106,7 @@ nrow(sch_pers) # Exclude about 300k...
 
 # For each person in the dataframe, find out schools that match their age range,
 # and choose ~ 50 nearest ones. Then assign them based on distance probability
-assign_sid <- function (ind, xy_age, sch_subs, cand_dist) {
-  xy <- xy_age[ind,,drop=F]
+assign_sid <- function (xy, sch_subs, cand_dist, cu = F) {
   sch_subs$dx <- abs(sch_subs$x - xy[1])
   sch_subs$dy <- abs(sch_subs$y - xy[2])
   
@@ -114,9 +117,15 @@ assign_sid <- function (ind, xy_age, sch_subs, cand_dist) {
   
   sch_subs <- sch_subs %>%
     filter(dx <= cand_dist[ind1], dy <= cand_dist[ind1])
-  d <- Rfast::dista(xy, sch_subs[,c("x", "y")]) %>% as.vector
   
-  sel <- sample(1:nrow(sch_subs), 1, prob = 1/d)
+  if (cu) {
+    d <- Rfast::dista(xy, sch_subs[,c("x", "y")]) %>% as.vector
+    sel <- sample(1:nrow(sch_subs), 1, prob = sch_subs$Population/d^2)
+  } else {
+    d <- Rfast::dista(xy, sch_subs[,c("x", "y")]) %>% as.vector
+    sel <- sample(1:nrow(sch_subs), 1, prob = 1/d)
+  }
+  
   return(sch_subs$SID[sel])
 }
 
@@ -137,11 +146,20 @@ for (a in 1:length(ages)) {
     select(x, y) %>%
     as.data.frame() %>%
     as.matrix()
-  sch_subs <- gc_sch2 %>%
-    filter(AGELO <= age, AGEHI >= age)
   
-  sid_age <- future_map_int(1:nrow(xy_age), ~ assign_sid(.x, xy_age, sch_subs, cand_dist),
-                            .progress = T)  
+  if (age >= 19) {
+    sch_subs <- gc_sch2 %>%
+      filter(AGELO <= age & AGEHI >= age) %>%
+      filter(!is.na(Population))
+    sid_age <- future_map_int(1:nrow(xy_age), ~ assign_sid(xy_age[.x,,drop=F], sch_subs, cand_dist, cu=T),
+                              .progress = T)  
+  } else {
+    sch_subs <- gc_sch2 %>%
+      filter(AGELO <= age, AGEHI >= age)
+    sid_age <- future_map_int(1:nrow(xy_age), ~ assign_sid(xy_age[.x,,drop=F], sch_subs, cand_dist, cu=F),
+                              .progress = T)  
+  }
+  
   sid <- c(sid, sid_age)
 }
 plan(sequential)
@@ -171,7 +189,7 @@ write_csv(gen_pers, "output/person_details.csv")
 
 png("fig/sch.png", 2400, 2400, pointsize = 10, res = 300)
 plot(sch_pers[,c("x", "y")], pch = ".", asp = 1)
-points(sch_pers[sch_pers$SID == 3055,c("x", "y")], pch = ".", col = "blue")
+points(sch_pers[sch_pers$SID == 7565,c("x", "y")], pch = ".", col = "blue")
 points(gc_sch2[,c("x", "y")], col = "red", pch=".")
 dev.off()
 

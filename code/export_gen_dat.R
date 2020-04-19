@@ -14,10 +14,18 @@ colnames(hh) <- tolower(colnames(hh))
 nh <- read_csv("output/nh.csv")
 head(nh)
 colnames(nh) <- tolower(colnames(nh))
+nh <- nh %>%
+  select(nhid, pop) %>%
+  left_join(wp %>% filter(type == "n"), by = c("nhid" = "serial")) %>%
+  select(nhid, x, y, pop, worker, wid)
 
 sch <- read_csv("output/sch.csv")
 head(sch)
 colnames(sch) <- tolower(colnames(sch))
+sch <- sch %>%
+  select(sid, student) %>%
+  left_join(wp %>% filter(type == "s"), by = c("sid" = "serial")) %>%
+  select(sid, x, y, student, worker, wid)
 
 pers <- read_csv("output/person_details.csv")
 head(pers)
@@ -31,10 +39,10 @@ hh_e <- hh %>%
   select(hid, x, y)
 
 nh_e <- nh %>%
-  select(nhid, x, y, pop, worker)
+  select(nhid, wid, x, y, pop, worker)
 
 sch_e <- sch %>%
-  select(sid, x, y, pop = student, worker)
+  select(sid, wid, x, y, pop = student, worker)
 
 pers_e <- pers %>%
   mutate(wid = NA) %>%

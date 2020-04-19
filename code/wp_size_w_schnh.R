@@ -1,11 +1,17 @@
+rm(list=ls())
+
 library(raster)
 library(tidyverse)
 
 source("code/data_path.R")
 
-cenacs <- shapefile(fl_cenacs)
-cnt <- shapefile(fl_cnt)
-wac <- read_csv(fl_wac)
+untar(fl_cenacs, exdir = "./tmp/")
+# untar(fl_wac, exdir = "./tmp/")
+# wac <- shapefile("tmp/lehdwac_blk_2015/lehdwac_blk_2015.shp")
+# wac <- wac@data
+# write_csv(wac, "data/wac.csv")
+cenacs <- shapefile("tmp/cenacs/cenacs_2018.shp")
+wac <- read_csv("data/wac.csv")
 
 jobs_tract <- wac %>%
   group_by(TRACTCE10) %>%
