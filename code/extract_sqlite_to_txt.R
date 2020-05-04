@@ -30,25 +30,16 @@ print(head(loc))
 write_delim(loc, "loc.txt")
 
 ## Persons
-sql <- "SELECT pid, sex, age FROM pers"
+sql <- "SELECT p.pid AS pid, r.locid AS res_id, p.sex AS sex, p.age AS age, m.locid AS mov_id
+FROM pers AS p
+LEFT JOIN movement AS m
+ON p.pid = m.pid
+LEFT JOIN reside AS r
+ON p.pid = r.pid"
 pers <- dbGetQuery(con, sql)
 message("Preview for pers")
 print(head(pers))
 write_delim(pers, "pers.txt")
-
-## Movement
-sql <- "SELECT * FROM movement"
-movement <- dbGetQuery(con, sql)
-message("Preview for movement")
-print(head(movement))
-write_delim(movement, "movement.txt")
-
-## Reside
-sql <- "SELECT * FROM reside"
-reside <- dbGetQuery(con, sql)
-message("Preview for reside")
-print(head(reside))
-write_delim(reside, "reside.txt")
 
 #### Finish and kill the unpacked files
 message("Removing unpacked files...")
