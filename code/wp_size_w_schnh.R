@@ -4,26 +4,105 @@ library(raster)
 library(tidyverse)
 
 source("code/data_path.R")
+source("code/target_func.R")
 
-untar(fl_cenacs, exdir = "./tmp/")
-# untar(fl_wac, exdir = "./tmp/")
-# wac <- shapefile("tmp/lehdwac_blk_2015/lehdwac_blk_2015.shp")
-# wac <- wac@data
-# write_csv(wac, "data/wac.csv")
-cenacs <- shapefile("tmp/cenacs/cenacs_2018.shp")
-wac <- read_csv("data/wac.csv")
+#### Loading data
+## cenacs
+if (dir.exists("./tmp/cenacs")) {
+  cenacs <- shapefile("./tmp/cenacs/cenacs_2018.shp")
+} else {
+  untar(p2_cenacs, exdir = "./tmp")
+  cenacs <- shapefile("./tmp/cenacs/cenacs_2018.shp")
+}
 
+## lehdwac
+if (file.exists("./data/wac.csv")) {
+  wac <- read_csv("data/wac.csv")
+} else if (dir.exists("./tmp/lehdwac_blk_2015")) {
+  wac <- shapefile("./tmp/lehdwac_blk_2015/lehdwac_blk_2015.shp")
+  wac <- wac@data
+  write_csv(wac, "./data/wac.csv")
+} else {
+  untar(p2_wac, exdir = "./tmp")
+  wac <- shapefile("./tmp/lehdwac_blk_2015/lehdwac_blk_2015.shp")
+  wac <- wac@data
+  write_csv(wac, "./data/wac.csv")
+}
+
+## ncd
+# if (file.exists("./data/geocoded_workplaces_w_naics.csv")) {
+#   wp_coords <- read_csv("./data/geocoded_workplaces_w_naics.csv")
+# } else {
+#   untar(p2_ncdwp, exdir = "./tmp")
+#   wp_coords <- read_csv("tmp/geocoded_workplaces_w_naics.csv")
+#   write_csv(wp_coords, "./data/geocoded_workplaces_w_naics.csv")
+#   file.remove("tmp/geocoded_workplaces_w_naics.csv")
+# }
+
+if (file.exists("./data/geocoded_workplaces_w_naics_w_essential.csv")) {
+  wp_coords <- read_csv("./data/geocoded_workplaces_w_naics_w_essential.csv")
+} else {
+  untar(p2_ncdwp, exdir = "./tmp")
+  wp_coords <- read_csv("tmp/geocoded_workplaces_w_naics.csv")
+  write_csv(wp_coords, "./data/geocoded_workplaces_w_naics.csv")
+  file.remove("tmp/geocoded_workplaces_w_naics.csv")
+}
+
+wp_coords <- wp_coords %>%
+  select(-X1, -naics_classification_notes)
+
+## NH
+if (file.exists("output/nh.csv")) {
+  nh <- read_csv("output/nh.csv") %>%
+    mutate(SERIAL = NHID, TYPE = "n") %>%
+    select(SERIAL, x, y, WORKER, TYPE)
+} else {
+  stop("NH data not found.")
+}
+
+## SCH
+if (file.exists("output/sch.csv")) {
+  sch <- read_csv("output/sch.csv") %>%
+    mutate(SERIAL = SID, TYPE = "s") %>%
+    select(SERIAL, x, y, WORKER, TYPE)
+} else {
+  stop("SCH data not found.")
+}
+
+## NAICS
+if (file.exists("data/naics_emp_wpar.csv")) {
+  naics <- read_csv("data/naics_emp_wpar.csv")
+  colnames(naics) <- c("NAICS 1 Code", "Description", paste0("grp", 1:9), "s", "xi")
+} else {
+  stop("NAICS params data not found.")
+}
+
+## NAICS 2017 - 2012 Lookup
+naics_1712 <- read_csv("data/naics_1712_lookup.csv")
+
+#### New dataframe
+## Jobs per census tract
 jobs_tract <- wac %>%
   group_by(TRACTCE10) %>%
   summarise(JOBS = sum(TOTAL_JOBS))
 cenacs$TRACTCE10 %>% unique %>% length
 
-# Untar
-untar(p2_ncdwp, exdir = "./tmp")
-wp_coords <- read_csv("tmp/geocoded_workplaces_w_naics.csv")
-file.remove("tmp/geocoded_workplaces_w_naics.csv")
+## WP without SCH and NH 
+wp_coords1 <- wp_coords %>%
+  dplyr::filter(!is.na(x), !is.na(y)) %>%
+  dplyr::filter(!(naics >= 611110 & naics <= 611399) | is.na(naics)) %>%
+  dplyr::filter(!naics %in% c(623312, 623110) | is.na(naics))
+wp_coords1$WORKER <- NA
+wp_coords1 <- wp_coords1 %>%
+  select(SERIAL = serial, x, y, WORKER, NAICS = naics, naics_essential_classification) %>%
+  mutate(TYPE = "w")
 
-# Think...
+# Add SCH and NH
+wp_coords2 <- bind_rows(wp_coords1, nh, sch)
+
+
+#### Extra analyses
+## WP with same coordinates
 wp_unique <- wp_coords %>%
   dplyr::filter(!is.na(x), !is.na(y)) %>%
   group_by(x, y, naics) %>%
@@ -35,29 +114,9 @@ tmp <- as.numeric(row.names(naics_unique))
 ind <- which(tmp >= 611110 & tmp <= 611699)
 naics_unique[ind,]
 
-# Handle Schools and Nursing Home separately
-# Note that there's general mismatch in number of schools and nursing home among
-# data sources...
-wp_coords1 <- wp_coords %>%
-  dplyr::filter(!is.na(x), !is.na(y)) %>%
-  dplyr::filter(!(naics >= 611110 & naics <= 611399) | is.na(naics)) %>%
-  dplyr::filter(!naics %in% c(623312, 623110) | is.na(naics))
-wp_coords1$WORKER <- NA
-wp_coords1 <- wp_coords1 %>%
-  select(SERIAL = serial, x, y, WORKER) %>%
-  mutate(TYPE = "w")
 
-# Add NH and SCH
-nh <- read_csv("output/nh.csv") %>%
-  mutate(SERIAL = NHID, TYPE = "n") %>%
-  select(SERIAL, x, y, WORKER, TYPE)
-sch <- read_csv("output/sch.csv") %>%
-  mutate(SERIAL = SID, TYPE = "s") %>%
-  select(SERIAL, x, y, WORKER, TYPE)
-
-wp_coords2 <- bind_rows(wp_coords1, nh, sch)
-head(wp_coords2)
-
+#### Meat
+## Sort WP into census tracts
 wp_sp <- SpatialPoints(wp_coords2[,c("x", "y")], proj4string = CRS("+init=epsg:4326"))
 wp_sp <- wp_sp %>%
   spTransform(crs(cenacs))
@@ -70,14 +129,43 @@ wp <- cbind(wp_coords2, tmp)
 rm(cenacs2)
 rm(tmp)
 
-# wp_sp <- wp_sp[!is.na(wp$TRACTCE10),]
-# windows()
-# plot(wp_sp, pch = ".", cex = .3, col = "blue")
-# plot(cnt, add=T)
-
 wp <- wp %>%
   filter(!is.na(TRACTCE10)) # Get rid of wp outside FL
-nwp_jobs <- wp %>%
+
+## Clean up discrepancies in NAICS between tables
+wp1 <- wp %>%
+  select(-BLKGRPCE10) %>%
+  mutate(NAICS = ifelse(is.na(NAICS) | NAICS == 0, 999999, NAICS))
+
+naics_nomatch <- wp1$NAICS[!wp1$NAICS %in% naics$`NAICS 1 Code`] %>%
+  unique
+
+tmp <- sapply(naics_nomatch, 
+              function(x) min(naics_1712$NAICS_2017[naics_1712$NAICS_2012 == x]))
+
+naics_lookup <- cbind(naics_nomatch, tmp)
+
+# Some entries need hard coding to reconcile :/
+naics_lookup[naics_lookup[,1] == 425110, 2] <- 425120
+naics_lookup[naics_lookup[,1] == 485991, 2] <- 485999
+naics_lookup[naics_lookup[,1] == 541711, 2] <- 541714
+naics_lookup[naics_lookup[,1] == 541712, 2] <- 541714
+naics_lookup[naics_lookup[,1] == 813311, 2] <- 813312
+
+cond <- wp1$NAICS %in% naics_lookup[,1]
+ind <- sapply(wp1$NAICS[cond], function(x) which(x == naics_lookup[,1]))
+wp1$NAICS[cond] <- naics_lookup[ind, 2]
+table(wp1$NAICS[!wp1$NAICS %in% naics$`NAICS 1 Code`]) # double check
+
+## Join WP with naics data
+# wp1 <- wp1 %>%
+#   left_join(naics %>% rename(NAICS = `NAICS 1 Code`) %>% select(-Description))
+
+# SERIAL is not UNIQUE (Mix of SID, NHID and original UID for WP)
+wp1$WID <- 1:nrow(wp1) 
+
+## JOBS and JOBS to be filled for each census tract
+nwp_jobs <- wp1 %>%
   group_by(TRACTCE10) %>%
   summarise(WP_TOFILL = sum(is.na(WORKER)), 
             CURR_JOBS = sum(WORKER, na.rm = T)) %>% 
@@ -85,36 +173,70 @@ nwp_jobs <- wp %>%
   mutate(JOBS_TOFILL = JOBS - CURR_JOBS,
          JOBS_TOFILL = ifelse(JOBS_TOFILL<0, 0, JOBS_TOFILL))
 
-wp1 <- wp
+## Filling up jobs
+jobs_mat <- c()
+pb <- txtProgressBar(max = nrow(nwp_jobs), style = 3)
+
 for (i in 1:nrow(nwp_jobs)) {
-  cond <- wp1$TRACTCE10 == nwp_jobs$TRACTCE10[i] & is.na(wp1$WORKER)
+  setTxtProgressBar(pb, i)
+  wp_tract <- wp1 %>%
+    filter(TRACTCE10 == nwp_jobs$TRACTCE10[i], is.na(WORKER)) %>%
+    arrange(NAICS) %>%
+    select(WID, WORKER, NAICS)
+  wp_tract_agg <- wp_tract %>%
+    group_by(NAICS) %>%
+    count %>%
+    left_join(naics %>% rename(NAICS = `NAICS 1 Code`) %>% select(-Description),
+              by = "NAICS")
+  
   if (nwp_jobs$JOBS_TOFILL[i] <= nwp_jobs$WP_TOFILL[i]) {
-    wp1$WORKER[cond] <- 1
+    wp_tract$WORKER <- 1
   } else {
-    # Create 100 sets random pareto numbers by transform from unif
-    r <- nwp_jobs$JOBS_TOFILL[i] / nwp_jobs$WP_TOFILL[i]
-    y <- runif(nwp_jobs$WP_TOFILL[i]*100) %>% matrix(nwp_jobs$WP_TOFILL[i], 100)
-    y <- 1/y^((r-1)/r) # Transform to pareto from uniform samples
+    grpmat <- wp_tract_agg[,colnames(wp_tract_agg) %>% str_detect("grp")] %>%
+      as.matrix
+    n <- wp_tract_agg$n
+    s <- wp_tract_agg$s
+    xi <- wp_tract_agg$xi
     
-    # Mean of pareto is unstable, so choose sample set with mean closest to ideal
-    sel <- which.min(abs(colMeans(y) - r))
-    y <- y[,sel]
+    rmat <- pmap(list(n = n, ind = 1:nrow(grpmat), s = s, xi = xi),
+                 function (n, ind, s, xi) two_stage_samp(n, grpmat[ind,], s, xi))
+    rmat <- do.call("rbind", rmat)
+    
+    # Create 100 sets random gpd numbers
+    colSums(rmat)
+    nwp_jobs$JOBS_TOFILL[i]
+    
+    # Mean of generalized pareto is unstable, choosing sample set with 
+    # sum of sizes closest to JOBS_TO_FILL
+    sel <- which.min(abs(colSums(rmat) - nwp_jobs$JOBS_TOFILL[i]))
+    r <- rmat[,sel]
     
     # Scale to ideal mean
-    diff <- nwp_jobs$JOBS_TOFILL[i] - sum(round(y))
-    y2 <- round(y*(1+diff/sum(y)))
-    y2[y2==0] <- 1
-    wp1$WORKER[cond] <- y2
+    diff <- nwp_jobs$JOBS_TOFILL[i] - length(r)
+    ratio <- diff / (sum(r) - length(r))
+    r2 <- r - 1
+    r2 <- 1 + round(r2 * ratio)
+    
+    wp_tract$WORKER <- r2
   }
+  
+  w <- wp_tract[,c("WID", "WORKER")] %>% as.matrix
+  jobs_mat <- rbind(jobs_mat, w)
 }
+
+jobs_mat1 <- jobs_mat[order(jobs_mat[,1]),]
+wp1$WORKER[is.na(wp1$WORKER)] <- jobs_mat1[,2]
 
 foo <- wp1 %>%
   group_by(TRACTCE10) %>%
   summarise(WORKER = sum(WORKER))
-plot(log(foo$WORKER), log(nwp_jobs$JOBS))
+plot(log10(foo$WORKER), log10(nwp_jobs$JOBS))
+abline(0, 1)
+# plot((foo$WORKER), (nwp_jobs$JOBS))
+# abline(0, 1)
+mean(foo$WORKER - nwp_jobs$JOBS)
 
-wp1$WID <- 1:nrow(wp1)
 wp2 <- wp1 %>%
-  select(WID, TYPE, x, y, WORKER, SERIAL)
+  select(WID, TYPE, x, y, WORKER, SERIAL, NAICS, ESS_CLASS = naics_essential_classification)
 
 write_csv(wp2, "output/wp.csv")

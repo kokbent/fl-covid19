@@ -1,3 +1,4 @@
+#include <iostream>
 #include <Rcpp.h>
 #include <math.h>
 #include <vector>
@@ -9,7 +10,7 @@ using namespace Rcpp;
 
 // [[Rcpp::plugins("cpp11")]]
 
-double pixel_size   = 0.00416667;
+double pixel_size   = 0.00416667 * 5;
 double min_x_center = -87.78555;
 double min_y_center = 24.46990;
 
@@ -26,7 +27,13 @@ struct LocationType {
   double y; // latitude
   map<string,int> pixel = {{"xi",0}, {"yi",0}};
   int weight;
+  int capacity;
 };
+
+// struct StartEnd {
+//   int start;
+//   int end;
+// };
 
 double rad_to_deg(double radians) { return 180*radians/M_PI; }
 double deg_to_rad(double degree) { return M_PI*degree/180; }
@@ -80,6 +87,7 @@ vector<LocationType*> to_locs_obj (NumericMatrix locs, NumericVector weights) {
     w->x = locs(i, 0);
     w->y = locs(i, 1);
     w->weight = weights[i];
+    w->capacity = weights[i];
     
     w->pixel["xi"] = x_to_col_num(w->x);
     w->pixel["yi"] = y_to_row_num(w->y);
@@ -134,7 +142,7 @@ unsigned int binary_search(const vector<LocationType*> &loc_vec, int search_coor
 
 
 vector<LocationType*> get_nearby_places(int pxi, int pyi, const vector<LocationType*> &places, 
-                                        unsigned int num_loc_needed, int steps = 20) {
+                                        unsigned int num_loc_needed, int steps = 2) {
   int commute_range = 0;
   vector<LocationType*> nearby_places; // by index in places
   
@@ -155,6 +163,57 @@ vector<LocationType*> get_nearby_places(int pxi, int pyi, const vector<LocationT
       end_pos_plus_one = binary_search(places, pyi+commute_range+1, "yi", start_pos, end_pos_plus_one);
       
       for (unsigned int i = start_pos; i < end_pos_plus_one; ++i) { nearby_places.push_back(places[i]); }
+    }
+  }
+  
+  return nearby_places;
+}
+
+
+vector<LocationType*> get_nearby_places2(int pxi, int pyi, const vector<LocationType*> &places, 
+                                         unsigned int num_loc_needed, int steps = 1) {
+  int commute_range = -steps;
+  vector<LocationType*> nearby_places; // by index in places
+  
+  while ((nearby_places.size() < num_loc_needed and nearby_places.size() < places.size())) {
+    // nearby_places.clear();
+    commute_range += steps;
+    
+    for (int x_val = pxi-commute_range; x_val <= pxi+commute_range; ++x_val) {
+      unsigned int start_posx = 0, start_posy = 0;
+      unsigned int end_pos_plus_onex = places.size(), end_pos_plus_oney = places.size();
+      
+      if ((x_val < pxi-commute_range+steps) | (x_val > pxi+commute_range-steps) | (commute_range == 0)) {
+        start_posx = binary_search(places, x_val, "xi", start_posx, end_pos_plus_onex);
+        end_pos_plus_onex = binary_search(places, x_val+1, "xi", start_posx, end_pos_plus_onex);
+        
+        if (start_posx == end_pos_plus_onex) { continue; }
+        
+        start_posy = binary_search(places, pyi-commute_range, "yi", start_posx, end_pos_plus_onex);
+        end_pos_plus_oney = binary_search(places, pyi+commute_range+1, "yi", start_posy, end_pos_plus_onex);
+        
+        for (unsigned int i = start_posy; i < end_pos_plus_oney; ++i) { nearby_places.push_back(places[i]); }
+      } else {
+        start_posx = binary_search(places, x_val, "xi", start_posx, end_pos_plus_onex);
+        end_pos_plus_onex = binary_search(places, x_val+1, "xi", start_posx, end_pos_plus_onex);
+        
+        if (start_posx == end_pos_plus_onex) { continue; }
+        
+        // Upper
+        start_posy = binary_search(places, pyi-commute_range, "yi", start_posx, end_pos_plus_onex);
+        end_pos_plus_oney = binary_search(places, pyi-commute_range+steps, "yi", start_posy, end_pos_plus_onex);
+        
+        for (unsigned int i = start_posy; i < end_pos_plus_oney; ++i) { nearby_places.push_back(places[i]); }
+        
+        // Lower
+        start_posy = binary_search(places, pyi+commute_range-steps+1, "yi", start_posx, end_pos_plus_onex);
+        end_pos_plus_oney = binary_search(places, pyi+commute_range+1, "yi", start_posy, end_pos_plus_onex);
+        
+        for (unsigned int i = start_posy; i < end_pos_plus_oney; ++i) { nearby_places.push_back(places[i]); }
+        
+      }
+      
+      
     }
   }
   
@@ -195,9 +254,9 @@ LocationType* choose_one_loc(PtsType* p, vector<LocationType*> nearby_places, mt
 NumericMatrix assign_by_gravity(NumericMatrix pts, NumericMatrix locs, NumericVector weights,
                                 int num_loc, unsigned int seed, 
                                 double min_x = -87.78555, double min_y = 24.46990,
-                                int steps = 20) {
+                                int steps = 2, bool use_capacity = false) {
   int npts = pts.nrow();
-  // int nlocs = locs.nrow();
+  int nlocs = locs.nrow();
   mt19937 rng(seed);
   // NumericVector out(npts);
   NumericMatrix out(npts, 2);
@@ -209,12 +268,25 @@ NumericMatrix assign_by_gravity(NumericMatrix pts, NumericMatrix locs, NumericVe
   shuffle(pts_obj.begin(), pts_obj.end(), rng);
   
   for (int i = 0; i < npts; i++) {
+    if ((i+1) % 10000 == 0) Rcout << "Assigning point " << i+1 << "\n";
     PtsType* p = pts_obj[i];
     const int pxi = x_to_col_num(p->x);
     const int pyi = y_to_row_num(p->y);
     
-    vector<LocationType*> nearby_places = get_nearby_places(pxi, pyi, locs_obj, num_loc, steps);
+    vector<LocationType*> nearby_places = get_nearby_places2(pxi, pyi, locs_obj, num_loc, steps);
+    // if ((i+1) % 1000 == 0) Rcout << nearby_places.size() << "\n";
     LocationType* chosen = choose_one_loc(p, nearby_places, rng);
+    
+    if (use_capacity) {
+      chosen->capacity--;
+      if (chosen->capacity == 0) {
+        locs_obj.erase(std::remove(locs_obj.begin(), locs_obj.end(), chosen));
+        if ((nlocs - locs_obj.size()) % 10000 == 0) {
+          Rcout << (nlocs - locs_obj.size()) << " locations have been filled to purported capacity\n";
+        }
+      }
+    }
+    
     out(i, 0) = p->id;
     out(i, 1) = chosen->id;
   }
@@ -234,5 +306,5 @@ NumericMatrix assign_by_gravity(NumericMatrix pts, NumericMatrix locs, NumericVe
 assign_by_gravity(matrix(c(-87.45, -87.0, 24.85, 25.05), 2, 2), 
                   matrix(c(-87.4, -87.5, -87.1, -87.1,
                             24.8,  24.9,  25.1,  25.0), 4, 2),
-                  c(1, 1, 1, 1), 1, 4327)
+                  c(1, 1, 1, 1), 1, 4327, use_capacity = T)
 */

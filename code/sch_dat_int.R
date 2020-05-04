@@ -7,13 +7,26 @@ library(Rcpp)
 source("code/data_path.R")
 sourceCpp("code/gravity.cpp")
 
-untar(p2_gcsch, exdir = "./tmp")
-gc_sch <- shapefile("./tmp/gc_schools/gc_schools_sep17.shp") %>%
+#### Data import
+## PERS
+gen_pers <- read_csv("output/person_details.csv")
+gen_hh <- read_csv("output/hh_coords.csv")
+
+## SCH
+if (dir.exists("./tmp/gc_schools/")) {
+  gc_sch <- shapefile("./tmp/gc_schools/gc_schools_sep17.shp")
+} else {
+  untar(p2_gcsch, exdir = "./tmp")
+  gc_sch <- shapefile("./tmp/gc_schools/gc_schools_sep17.shp")
+}
+
+gc_sch <- gc_sch %>%
   spTransform(CRS("+init=epsg:4326"))
 head(gc_sch)
 table(gc_sch$FLAG, useNA = "ifany")
 table(gc_sch$TYPE, useNA = "ifany")
 
+#### Cleaning data
 # Use GCSCH data for school locations (excl ADULT, SUPPORT SERVICES, UNKNOWN, UNASSIGNED)
 # remove corresponding ncd entries based on naics
 gc_sch1 <- gc_sch@data %>%
@@ -55,11 +68,13 @@ gc_sch1 <- gc_sch1 %>%
     TYPE == "SENIOR HIGH" ~ 18
   ))
 
+#### Special considerations made for college/university
 # For college/university, disable some which are non "classrooms"
 cu <- gc_sch1 %>%
   filter(TYPE == "COLLEGE/UNIVERSITY") %>%
   arrange(NAME)
-# write_csv(cu, "tmp/cu.csv") # For when cu_wsize.csv is not available
+# write_csv(cu, "tmp/cu.csv") # Uncomment if cu_wsize.csv is not available
+# And good luck filling in the "Population" of each cu, only 601!
 cu1 <- read_csv("data/cu_wsize.csv") %>%
   dplyr::select(AUTOID, Population) %>%
   mutate(AUTOID = as.character(AUTOID))
@@ -79,14 +94,11 @@ gc_sch2 <- gc_sch1 %>%
   left_join(sch_coord)
 gc_sch2$SID <- 1:nrow(gc_sch2)
 
-## Generated persons coordinates
-gen_pers <- read_csv("output/person_details.csv")
+## Coordinates of people who go to schools
 sch_pers <- gen_pers %>%
   filter(SCHOOL == 2)
-gen_hh <- read_csv("output/hh_coords.csv")
 sch_pers <- sch_pers %>%
   left_join(gen_hh %>% select(HID, x, y))
-rm(gen_hh)
 
 table(sch_pers$AGE) # People up to 95 years old claim they're in school...
 
@@ -124,7 +136,7 @@ for (a in 1:length(ages)) {
       sid_age <- assign_by_gravity(xy_age,
                                    sch_subs_coord,
                                    sch_subs$Population,
-                                   50, 4326, steps = 40)
+                                   50, 4326, steps = 4)
     ) %>% print()
   } else {
     sch_subs <- gc_sch2 %>%
@@ -136,7 +148,7 @@ for (a in 1:length(ages)) {
       sid_age <- assign_by_gravity(xy_age,
                                    sch_subs_coord,
                                    rep(1, nrow(sch_subs_coord)),
-                                   50, 4326, steps = 40)
+                                   50, 4326, steps = 4)
     ) %>% print()
     
     
@@ -151,7 +163,8 @@ for (a in 1:length(ages)) {
 sch_pers$SID <- sid
 sch_pers_simp <- sch_pers %>%
   select(PID, SID)
-gen_pers <- gen_pers %>% left_join(sch_pers_simp)
+gen_pers <- gen_pers %>% 
+  left_join(sch_pers_simp)
 gen_pers <- gen_pers %>%
   select(PID, HID, NHID, SID, SEX, AGE, SCHOOL, EMPSTATD, PWSTATE2, PWPUMA00, GQ)
 table(is.na(gen_pers$SID))

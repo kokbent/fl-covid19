@@ -7,9 +7,15 @@ library(doSNOW)
 
 source("code/data_path.R")
 
-cenacs <- shapefile(fl_cenacs)
-fl_hh_r <- raster(fl_hh)
-cenacs_wgs <- cenacs %>% spTransform(crs(fl_hh_r))
+if (dir.exists("./tmp/cenacs")) {
+  cenacs <- shapefile("./tmp/cenacs/cenacs_2018.shp")
+} else {
+  untar(p2_cenacs, exdir = "./tmp")
+  cenacs <- shapefile("./tmp/cenacs/cenacs_2018.shp")
+}
+
+fl_hh <- raster(p2_hh)
+cenacs_wgs <- cenacs %>% spTransform(crs(fl_hh))
 
 dat <- read_rds(ipums_file)
 hh_dat <- dat %>%
@@ -80,7 +86,7 @@ hh_xy <- foreach(i = 1:nrow(cenacs), .packages = c("dplyr", "raster", "sp"),
                      
                      repeat {
                        xy_i <- spsample(cenacs_wgs[i,], N, "random")
-                       w <- raster::extract(fl_hh_r, xy_i)
+                       w <- raster::extract(fl_hh, xy_i)
                        cond <- !is.na(w)
                        xy_i <- xy_i[cond,]
                        w <- w[cond]
