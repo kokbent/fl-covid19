@@ -2,7 +2,7 @@
 data_folder <- "data/"
 
 # IPUMS 2014-2018 Data (RDS)
-ipums_file <- "C:/Users/kokbent/Dropbox (UFL)/COVID-FL/population_density/IPUMS_ACR_2014-18.rds"
+ipums_ddi <- "C:/Users/kokbent/Dropbox (UFL)/COVID-FL/demographics/usa_00002.xml"
 
 # FL census block shapefiles
 p2_cenacs <- "C:/Users/kokbent/Dropbox (UFL)/COVID-FL/shapefiles/cenacs.tgz"
