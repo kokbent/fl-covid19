@@ -1,5 +1,5 @@
-curl::curl_download("https://floridadisaster.org/globalassets/covid19/dailies/covid-19-data---daily-report-2020-04-10-1712.pdf",
-                          destfile = "etc/2020-04-10.pdf")
+curl::curl_download("https://floridadisaster.org/globalassets/covid19/dailies/covid-19-data---daily-report-2020-04-24-1640.pdf",
+                          destfile = "etc/2020-04-24.pdf")
 
 dl <- curl::curl_download("https://floridadisaster.org/globalassets/covid-19-data---daily-report-2020-03-24-1657.pdf",
                           destfile = "etc/2020-03-24.pdf")
@@ -7,7 +7,7 @@ tme <- c(as.character(1830:1800), as.character(1759:1700), as.character(1659:160
 tme <- rev(tme)
 tme <- c(paste0("0", as.character(959:930)), as.character(1059:1000))
 
-d <- "2020-04-10"
+d <- "2020-04-23"
 url1 <- "https://floridadisaster.org/globalassets/covid19/dailies/covid-19-data---daily-report-"
 url2 <- paste0(d, "-")
 

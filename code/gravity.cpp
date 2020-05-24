@@ -4,6 +4,7 @@
 #include <vector>
 #include <map>
 #include <random>
+#include <cmath>
 
 using namespace std;
 using namespace Rcpp;
@@ -250,6 +251,42 @@ LocationType* choose_one_loc(PtsType* p, vector<LocationType*> nearby_places, mt
 }
 
 
+vector<LocationType*> choose_mult_loc(PtsType* p, vector<LocationType*> nearby_places,
+                                      int num_loc_choose, mt19937& rng) {
+  assert(nearby_places.size() > 0);
+  vector<LocationType*> chosen_places;
+  vector<double> raw_weights(nearby_places.size(), 0.0);
+  double total_weight = 0.0;
+  for (unsigned int i = 0; i < nearby_places.size(); ++i) {
+    const LocationType* w = nearby_places[i];
+    const double dist = haversine(p->x, p->y, w->x, w->y);
+    const double size = w->weight;
+    raw_weights[i] = size / (dist*dist);
+    if (isinf(raw_weights[i])) raw_weights[i] = 0.0;
+    total_weight += raw_weights[i];
+  }
+  
+  for (int j = 0; j < num_loc_choose; j++) {
+    uniform_real_distribution<double> runif(0.0, total_weight);
+    double r = runif(rng);
+    // Rcout << j << " " << total_weight << " " << r << "\n";
+    
+    for (unsigned int i = 0; i < raw_weights.size(); i++) {
+      if (r < raw_weights[i]) {
+        chosen_places.push_back(nearby_places[i]);
+        total_weight -= raw_weights[i];
+        raw_weights[i] = raw_weights[i] - raw_weights[i];
+        break;
+      } else {
+        r -= raw_weights[i];
+      }
+    }
+  }
+  
+  return chosen_places;
+}
+
+
 // [[Rcpp::export]]
 NumericMatrix assign_by_gravity(NumericMatrix pts, NumericMatrix locs, NumericVector weights,
                                 int num_loc, unsigned int seed, 
@@ -274,7 +311,6 @@ NumericMatrix assign_by_gravity(NumericMatrix pts, NumericMatrix locs, NumericVe
     const int pyi = y_to_row_num(p->y);
     
     vector<LocationType*> nearby_places = get_nearby_places2(pxi, pyi, locs_obj, num_loc, steps);
-    // if ((i+1) % 1000 == 0) Rcout << nearby_places.size() << "\n";
     LocationType* chosen = choose_one_loc(p, nearby_places, rng);
     
     if (use_capacity) {
@@ -294,6 +330,40 @@ NumericMatrix assign_by_gravity(NumericMatrix pts, NumericMatrix locs, NumericVe
   return(out);
 }
 
+// [[Rcpp::export]]
+NumericMatrix assign_by_gravity2(NumericMatrix pts, NumericMatrix locs, NumericVector weights,
+                                 int num_loc_choose, int num_loc_candidate, unsigned int seed, 
+                                 double min_x = -87.78555, double min_y = 24.46990,
+                                 int steps = 2, bool use_capacity = false) {
+  int npts = pts.nrow();
+  // int nlocs = locs.nrow();
+  mt19937 rng(seed);
+  NumericMatrix out(npts, num_loc_choose+1);
+  min_x_center = min_x;
+  min_y_center = min_y;
+  
+  vector<LocationType*> locs_obj = to_locs_obj(locs, weights);
+  vector<PtsType*> pts_obj = to_pts_obj(pts);
+  shuffle(pts_obj.begin(), pts_obj.end(), rng);
+  
+  for (int i = 0; i < npts; i++) {
+    if ((i+1) % 10000 == 0) Rcout << "Assigning point " << i+1 << "\n";
+    PtsType* p = pts_obj[i];
+    const int pxi = x_to_col_num(p->x);
+    const int pyi = y_to_row_num(p->y);
+    
+    vector<LocationType*> nearby_places = get_nearby_places2(pxi, pyi, locs_obj, num_loc_candidate, steps);
+    vector<LocationType*> chosen = choose_mult_loc(p, nearby_places, num_loc_choose, rng);
+    
+    out(i, 0) = p->id;
+    for (int j = 0; j < num_loc_choose; j++) {
+      LocationType* ch = chosen[j];
+      out(i, j+1) = ch->id;
+    }
+  }
+  
+  return(out);
+}
 
 
 
@@ -303,8 +373,8 @@ NumericMatrix assign_by_gravity(NumericMatrix pts, NumericMatrix locs, NumericVe
 //
 
 /*** R
-assign_by_gravity(matrix(c(-87.45, -87.0, 24.85, 25.05), 2, 2), 
-                  matrix(c(-87.4, -87.5, -87.1, -87.1,
+assign_by_gravity2(matrix(c(-87.45, -87.0, 24.85, 25.05), 2, 2), 
+                   matrix(c(-87.4, -87.5, -87.1, -87.1,
                             24.8,  24.9,  25.1,  25.0), 4, 2),
-                  c(1, 1, 1, 1), 1, 4327, use_capacity = T)
+                   c(1, 1, 1, 1), 2, 3, 4328)
 */
