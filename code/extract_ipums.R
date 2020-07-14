@@ -4,7 +4,7 @@
 if (!require("ipumsr")) stop("Reading IPUMS data into R requires the ipumsr package. It can be installed using the following command: install.packages('ipumsr')")
 library(readr)
 
-ddi <- read_ipums_ddi("C:/Users/kokbent/Dropbox (UFL)/COVID-FL/demographics/usa_00002.xml")
+ddi <- read_ipums_ddi("C:/Users/kokbent/Dropbox (UFL)/COVID-FL/population_density/usa_00002.xml")
 data <- read_ipums_micro(ddi)
 
 colnames(data)
@@ -23,4 +23,3 @@ length(tmp)
 sum(data1$PERWT)
 
 write_rds(data1, "./tmp/IPUMS_ACR_2014-18.rds")
-
