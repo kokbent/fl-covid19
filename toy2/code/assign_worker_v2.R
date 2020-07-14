@@ -4,11 +4,11 @@ rm(list=ls())
 library(Rcpp)
 library(tidyverse)
 
-sourceCpp("code/gravity.cpp")
-wp <- read_csv("toy/output/wp.csv")
+sourceCpp("code/action_by_gravity.cpp")
+wp <- read_csv("toy2/output/wp.csv")
 head(wp)
-pers <- read_csv("toy/output/person_details.csv")
-hh <- read_csv("toy/output/hh_coords.csv")
+pers <- read_csv("toy2/output/person_details.csv")
+hh <- read_csv("toy2/output/hh_coords.csv")
 
 emp_pers <- pers %>%
   filter(EMPSTATD >= 10 & EMPSTATD < 14) %>%
@@ -28,7 +28,7 @@ wp_mat <- wp2[,c("x", "y")] %>% as.matrix
 # Scale workplace sizes up if there are more employed persons than jobs available
 # Generally want to have slightly more jobs than employed persons, but in this
 # toy example, we might need to scale it downwards...
-weights <- (wp2$WORKER * 0.85) %>% round
+weights <- (wp2$WORKER * 0.92) %>% round
 pts_mat <- emp_pers[,c("x", "y")] %>% as.matrix
 
 # Use 1000 nearest workplaces
@@ -54,5 +54,5 @@ pers1 <- pers %>% left_join(emp_pers %>% select(PID, WID2))
 table(is.na(pers1$WID2))
 
 #### Export ----
-write_csv(pers1, "toy/output/pers_w_wid.csv")
-write_csv(wp2, "toy/output/wp2.csv")
+write_csv(pers1, "toy2/output/pers_w_wid.csv")
+write_csv(wp2, "toy2/output/wp2.csv")

@@ -7,7 +7,7 @@ library(raster)
 library(tidyverse)
 library(tcltk)
 library(doSNOW)
-source("toy/code/data_path.R")
+source("toy2/code/data_path.R")
 
 cenacs <- shapefile(p2_cenacs)
 fl_hh <- raster(p2_hh)
@@ -130,7 +130,7 @@ person_xy$PID <- 1:nrow(person_xy)
 #### Moving GQ == 3 and AGE >= 55 people to NH
 nh_pop <- person_xy %>%
   filter(GQ == 3, AGE >= 55)
-nh <- read_csv("toy/output/nh.csv")
+nh <- read_csv("toy2/output/nh.csv")
 
 nh_pop$NHID <- NA
 for (i in 1:length(pumas)) {
@@ -167,8 +167,8 @@ nh$WORKER <- ceiling(nh$POP / 6)
 sum(nh$WORKER, na.rm = T)
 
 write_csv(hh_xy_puma %>% select(HID, x, y, SERIAL, PUMA5CE),
-          "toy/output/hh_coords.csv")
+          "toy2/output/hh_coords.csv")
 write_csv(person_xy %>% select(PID, HID, NHID, SEX, AGE, SCHOOL, EMPSTATD, PWSTATE2, PWPUMA00, GQ),
-          "toy/output/person_details.csv")
+          "toy2/output/person_details.csv")
 write_csv(nh %>% select(NHID, x = X, y = Y, WORKER, POP, PUMA5CE, REP_POP),
-          "toy/output/nh.csv")
+          "toy2/output/nh.csv")

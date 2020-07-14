@@ -7,7 +7,7 @@ rm(list=ls())
 # and also set the working directory to the folder with these files (or change the path below).
 if (!require("ipumsr")) stop("Reading IPUMS data into R requires the ipumsr package. It can be installed using the following command: install.packages('ipumsr')")
 library(readr)
-source("toy/code/data_path.R")
+source("toy2/code/data_path.R")
 
 ddi <- read_ipums_ddi(ipums_ddi)
 data <- read_ipums_micro(ddi)

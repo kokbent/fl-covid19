@@ -3,8 +3,8 @@ rm(list=ls())
 #### Model sizes of workplaces based on WAC info and NAICS employment sizes
 library(raster)
 library(tidyverse)
-source("toy/code/data_path.R")
-source("toy/code/target_func.R")
+source("toy2/code/data_path.R")
+source("toy2/code/target_func.R")
 
 #### Loading data ----
 ## cenacs
@@ -20,8 +20,8 @@ wp_coords <- wp_coords %>%
   select(-X1, -naics_classification_notes)
 
 ## NH
-if (file.exists("output/nh.csv")) {
-  nh <- read_csv("output/nh.csv") %>%
+if (file.exists("toy2/output/nh.csv")) {
+  nh <- read_csv("toy2/output/nh.csv") %>%
     mutate(SERIAL = NHID, TYPE = "n") %>%
     select(SERIAL, x, y, WORKER, TYPE)
 } else {
@@ -29,8 +29,8 @@ if (file.exists("output/nh.csv")) {
 }
 
 ## SCH
-if (file.exists("output/sch.csv")) {
-  sch <- read_csv("output/sch.csv") %>%
+if (file.exists("toy2/output/sch.csv")) {
+  sch <- read_csv("toy2/output/sch.csv") %>%
     mutate(SERIAL = SID, TYPE = "s") %>%
     select(SERIAL, x, y, WORKER, TYPE)
 } else {
@@ -38,15 +38,15 @@ if (file.exists("output/sch.csv")) {
 }
 
 ## NAICS
-if (file.exists("toy/data/naics_emp_wpar.csv")) {
-  naics <- read_csv("toy/data/naics_emp_wpar.csv")
+if (file.exists("toy2/data/naics_emp_wpar.csv")) {
+  naics <- read_csv("toy2/data/naics_emp_wpar.csv")
   colnames(naics) <- c("NAICS 1 Code", "Description", paste0("grp", 1:9), "s", "xi")
 } else {
   stop("NAICS params data not found.")
 }
 
 ## NAICS 2017 - 2012 Lookup (Needed to reconcile NAICS differences)
-naics_1712 <- read_csv("toy/data/naics_1712_lookup.csv")
+naics_1712 <- read_csv("toy2/data/naics_1712_lookup.csv")
 
 #### New dataframe ----
 ## Jobs per census tract
@@ -78,6 +78,7 @@ wp_unique <- wp_coords %>%
   arrange(desc(n))
 
 naics_unique <- table(wp_unique$naics, wp_unique$n > 1)
+tmp <- rownames(naics_unique) %>% as.numeric
 ind <- which(tmp >= 611110 & tmp <= 611699) # Schools
 naics_unique[ind,]
 
@@ -205,4 +206,4 @@ abline(0, 1)
 wp2 <- wp1 %>%
   select(WID, TYPE, x, y, WORKER, SERIAL, NAICS, ESS_CLASS = naics_essential_classification)
 
-write_csv(wp2, "toy/output/wp.csv")
+write_csv(wp2, "toy2/output/wp.csv")
