@@ -1,13 +1,12 @@
 rm(list = ls())
 
-#### Estimate workplace size parameter for Generalized Pareto Distribution 
-#### based on national data
+#### Estimate parameter for Generalized Pareto Distribution based on national data
 library(tidyverse)
-source("./code/target_func.R") # Functions for GPD
+source("toy/code/target_func.R")
 
 #### Loading & Manipulating data ----
 ## National NAICS workplace size
-naics_emp <- read_csv("data/NAICS_employment_sizes.csv") %>%
+naics_emp <- read_csv("toy/data/NAICS_employment_sizes.csv") %>%
   select(-`Uncoded records`, -`Grand Total`)
 
 # Set NAICS of Grand total to 999999 so uncoded workplaces use overall params
@@ -38,6 +37,4 @@ colMeans(params > 1)
 naics_emp <- cbind(naics_emp, params)
 colnames(naics_emp)[c(ncol(naics_emp) - 1, ncol(naics_emp))] <- c("s", "xi")
 
-
-#### Export ----
-write_csv(naics_emp, "./data/naics_emp_wpar.csv")
+write_csv(naics_emp, "toy/data/naics_emp_wpar.csv")

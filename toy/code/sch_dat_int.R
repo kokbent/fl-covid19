@@ -5,22 +5,16 @@ library(raster)
 library(tidyverse)
 library(Rcpp)
 
-source("code/data_path.R")
-sourceCpp("code/gravity.cpp")
+source("toy/code/data_path.R")
+sourceCpp("toy/code/gravity.cpp")
 
 #### Data import ----
 ## PERS
-gen_pers <- read_csv("output/person_details.csv")
-gen_hh <- read_csv("output/hh_coords.csv")
+gen_pers <- read_csv("toy/output/person_details.csv")
+gen_hh <- read_csv("toy/output/hh_coords.csv")
 
 ## SCH
-if (dir.exists("./tmp/gc_schools/")) {
-  gc_sch <- shapefile("./tmp/gc_schools/gc_schools_sep17.shp")
-} else {
-  untar(p2_gcsch, exdir = "./tmp")
-  gc_sch <- shapefile("./tmp/gc_schools/gc_schools_sep17.shp")
-}
-
+gc_sch <- shapefile(p2_gcsch)
 gc_sch <- gc_sch %>%
   spTransform(CRS("+init=epsg:4326"))
 head(gc_sch)
@@ -74,14 +68,9 @@ gc_sch1 <- gc_sch1 %>%
 cu <- gc_sch1 %>%
   filter(TYPE == "COLLEGE/UNIVERSITY") %>%
   arrange(NAME)
-
 # write_csv(cu, "tmp/cu.csv") # Uncomment if cu_wsize.csv is not available
 # And good luck filling in the "Population" of each cu, only 601!
-# Add a column of Population into cu, store them as "data/cu_wsize.csv"
-# Yes, done by hand...
-
-## Rebind CU data with other types of schools
-cu1 <- read_csv("data/cu_wsize.csv") %>%
+cu1 <- read_csv(p2_cu) %>%
   dplyr::select(AUTOID, Population) %>%
   mutate(AUTOID = as.character(AUTOID))
 cu <- cu %>%
@@ -111,14 +100,11 @@ table(sch_pers$AGE) # People up to 95 years old claim they're in school...
 # Set artificial boundary of 35 as upper age limit for schooling.
 sch_pers <- sch_pers %>%
   filter(AGE <= 35)
-nrow(sch_pers) # Exclude about 300k...
+nrow(sch_pers)
 
 # For each person in the dataframe, find out schools that match their age range,
 # and choose ~ 5 nearest ones (More should be used for "real" dataset). 
 # Then assign them based on distance probability
-
-# For each person in the dataframe, find out schools that match their age range,
-# and choose ~ 50 nearest ones. Then assign them based on distance probability
 sch_pers <- sch_pers %>%
   arrange(AGE, PID)
 sch_pers1 <- as.data.frame(sch_pers[,c("x", "y", "AGE")]) %>% as.matrix
@@ -146,7 +132,7 @@ for (a in 1:length(ages)) {
       sid_age <- assign_by_gravity(xy_age,
                                    sch_subs_coord,
                                    sch_subs$Population,
-                                   50, 4326, steps = 4)
+                                   5, 4326, steps = 4)
     ) %>% print()
   } else {
     sch_subs <- gc_sch2 %>%
@@ -158,7 +144,7 @@ for (a in 1:length(ages)) {
       sid_age <- assign_by_gravity(xy_age,
                                    sch_subs_coord,
                                    rep(1, nrow(sch_subs_coord)),
-                                   50, 4326, steps = 4)
+                                   5, 4326, steps = 4)
     ) %>% print()
     
     
@@ -170,11 +156,12 @@ for (a in 1:length(ages)) {
   sid <- c(sid, sid_age_v)
 }
 
-
-#### Harmonize back to PERS ----
 sch_pers$SID <- sid
 sch_pers_simp <- sch_pers %>%
   select(PID, SID)
+
+
+#### Harmonize back to PERS ----
 gen_pers <- gen_pers %>% 
   left_join(sch_pers_simp)
 gen_pers <- gen_pers %>%
@@ -185,7 +172,7 @@ tmp <- sch_pers_simp %>%
   count(SID)
 
 
-#### Assign workers to SCH (1 worker per 7 students) ----
+#### Assign workers to SCH ----
 gc_sch3 <- gc_sch2 %>%
   select(SID, x, y) %>%
   left_join(tmp) %>%
@@ -194,23 +181,5 @@ gc_sch3$WORKER <- ceiling(gc_sch3$STUDENT / 7)
 
 
 #### Export ----
-write_csv(gc_sch3, "output/sch.csv")
-write_csv(gen_pers, "output/person_details.csv")
-
-
-#### Some sanity check visualization ----
-png("fig/sch.png", 2400, 2400, pointsize = 10, res = 300)
-plot(sch_pers[,c("x", "y")], pch = ".", asp = 1)
-points(sch_pers[sch_pers$SID == 7565,c("x", "y")], pch = ".", col = "blue")
-points(gc_sch2[,c("x", "y")], col = "red", pch=".")
-dev.off()
-
-# Santa Fe is 7442
-
-# gen_hh <- read_csv("output/hh_coords.csv")
-# sch_pers1 <- sch_pers %>%
-#   left_join(gen_hh %>% select(HID, PUMA5CE))
-# sum(sch_pers1$AGE[sch_pers1$PUMA5CE=="00101"] > 18)
-# sum(sch_pers1$AGE[sch_pers1$PUMA5CE=="00102"] > 18)
-# cond <- gc_sch1$COUNTY == "ALACHUA" & gc_sch1$TYPE == "COLLEGE/UNIVERSITY"
-# gc_sch1[cond,]
+write_csv(gc_sch3, "toy/output/sch.csv")
+write_csv(gen_pers, "toy/output/person_details.csv")

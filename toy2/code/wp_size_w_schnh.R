@@ -3,50 +3,25 @@ rm(list=ls())
 #### Model sizes of workplaces based on WAC info and NAICS employment sizes
 library(raster)
 library(tidyverse)
-
-source("code/data_path.R")
-source("code/target_func.R")
+source("toy2/code/data_path.R")
+source("toy2/code/target_func.R")
 
 #### Loading data ----
 ## cenacs
-if (dir.exists("./tmp/cenacs")) {
-  cenacs <- shapefile("./tmp/cenacs/cenacs_2018.shp")
-} else {
-  untar(p2_cenacs, exdir = "./tmp")
-  cenacs <- shapefile("./tmp/cenacs/cenacs_2018.shp")
-}
+cenacs <- shapefile(p2_cenacs)
 
 ## lehdwac
-if (file.exists("./data/wac.csv")) {
-  wac <- read_csv("data/wac.csv")
-} else if (dir.exists("./tmp/lehdwac_blk_2015")) {
-  wac <- shapefile("./tmp/lehdwac_blk_2015/lehdwac_blk_2015.shp")
-  wac <- wac@data
-  write_csv(wac, "./data/wac.csv")
-} else {
-  untar(p2_wac, exdir = "./tmp")
-  wac <- shapefile("./tmp/lehdwac_blk_2015/lehdwac_blk_2015.shp")
-  wac <- wac@data
-  write_csv(wac, "./data/wac.csv")
-}
+wac <- shapefile(p2_wac)
+wac <- wac@data
 
 ## ncd
-if (file.exists(p2_ncdwpx)) {
-  wp_coords <- read_csv(p2_ncdwpx)
-} else {
-  stop("NCD Data with essential classification not found.")
-  # untar(p2_ncdwp, exdir = "./tmp")
-  # wp_coords <- read_csv("tmp/geocoded_workplaces_w_naics.csv")
-  # write_csv(wp_coords, "./data/geocoded_workplaces_w_naics.csv")
-  # file.remove("tmp/geocoded_workplaces_w_naics.csv")
-}
-
+wp_coords <- read_csv(p2_ncdwp)
 wp_coords <- wp_coords %>%
   select(-X1, -naics_classification_notes)
 
 ## NH
-if (file.exists("output/nh.csv")) {
-  nh <- read_csv("output/nh.csv") %>%
+if (file.exists("toy2/output/nh.csv")) {
+  nh <- read_csv("toy2/output/nh.csv") %>%
     mutate(SERIAL = NHID, TYPE = "n") %>%
     select(SERIAL, x, y, WORKER, TYPE)
 } else {
@@ -54,8 +29,8 @@ if (file.exists("output/nh.csv")) {
 }
 
 ## SCH
-if (file.exists("output/sch.csv")) {
-  sch <- read_csv("output/sch.csv") %>%
+if (file.exists("toy2/output/sch.csv")) {
+  sch <- read_csv("toy2/output/sch.csv") %>%
     mutate(SERIAL = SID, TYPE = "s") %>%
     select(SERIAL, x, y, WORKER, TYPE)
 } else {
@@ -63,15 +38,15 @@ if (file.exists("output/sch.csv")) {
 }
 
 ## NAICS
-if (file.exists("data/naics_emp_wpar.csv")) {
-  naics <- read_csv("data/naics_emp_wpar.csv")
+if (file.exists("toy2/data/naics_emp_wpar.csv")) {
+  naics <- read_csv("toy2/data/naics_emp_wpar.csv")
   colnames(naics) <- c("NAICS 1 Code", "Description", paste0("grp", 1:9), "s", "xi")
 } else {
   stop("NAICS params data not found.")
 }
 
 ## NAICS 2017 - 2012 Lookup (Needed to reconcile NAICS differences)
-naics_1712 <- read_csv("data/naics_1712_lookup.csv")
+naics_1712 <- read_csv("toy2/data/naics_1712_lookup.csv")
 
 #### New dataframe ----
 ## Jobs per census tract
@@ -103,10 +78,9 @@ wp_unique <- wp_coords %>%
   arrange(desc(n))
 
 naics_unique <- table(wp_unique$naics, wp_unique$n > 1)
-tmp <- as.numeric(row.names(naics_unique)) 
-ind <- which(tmp >= 611110 & tmp <= 611699)
+tmp <- rownames(naics_unique) %>% as.numeric
+ind <- which(tmp >= 611110 & tmp <= 611699) # Schools
 naics_unique[ind,]
-
 
 #### Meat ----
 ## Sort WP into census tracts
@@ -154,7 +128,6 @@ table(wp1$NAICS[!wp1$NAICS %in% naics$`NAICS 1 Code`]) # double check
 # wp1 <- wp1 %>%
 #   left_join(naics %>% rename(NAICS = `NAICS 1 Code`) %>% select(-Description))
 
-## Tidying SERIAL
 # SERIAL is not UNIQUE (Mix of SID, NHID and original UID for WP)
 wp1$WID <- 1:nrow(wp1) 
 
@@ -227,11 +200,10 @@ foo <- wp1 %>%
   summarise(WORKER = sum(WORKER))
 plot(log10(foo$WORKER), log10(nwp_jobs$JOBS))
 abline(0, 1)
-mean(foo$WORKER - nwp_jobs$JOBS)
 
 
 #### Export ----
 wp2 <- wp1 %>%
   select(WID, TYPE, x, y, WORKER, SERIAL, NAICS, ESS_CLASS = naics_essential_classification)
 
-write_csv(wp2, "output/wp.csv")
+write_csv(wp2, "toy2/output/wp.csv")

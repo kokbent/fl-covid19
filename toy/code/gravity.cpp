@@ -78,8 +78,7 @@ double haversine(double lon1, double lat1, double lon2, double lat2) {
 }
 
 
-vector<LocationType*> to_locs_obj (NumericMatrix locs, NumericVector weights,
-                                   NumericVector capacity) {
+vector<LocationType*> to_locs_obj (NumericMatrix locs, NumericVector weights) {
   int nlocs = locs.nrow();
   vector<LocationType*> locs_vec;
   
@@ -89,7 +88,7 @@ vector<LocationType*> to_locs_obj (NumericMatrix locs, NumericVector weights,
     w->x = locs(i, 0);
     w->y = locs(i, 1);
     w->weight = weights[i];
-    w->capacity = capacity[i];
+    w->capacity = weights[i];
     
     w->pixel["xi"] = x_to_col_num(w->x);
     w->pixel["yi"] = y_to_row_num(w->y);
@@ -293,8 +292,6 @@ NumericMatrix assign_by_gravity(NumericMatrix pts, NumericMatrix locs, NumericVe
                                 int num_loc, unsigned int seed, 
                                 double min_x = -87.78555, double min_y = 24.46990,
                                 int steps = 2, bool use_capacity = false) {
-  
-  // Choose one location per pts
   int npts = pts.nrow();
   int nlocs = locs.nrow();
   mt19937 rng(seed);
@@ -303,7 +300,7 @@ NumericMatrix assign_by_gravity(NumericMatrix pts, NumericMatrix locs, NumericVe
   min_x_center = min_x;
   min_y_center = min_y;
   
-  vector<LocationType*> locs_obj = to_locs_obj(locs, weights, weights);
+  vector<LocationType*> locs_obj = to_locs_obj(locs, weights);
   vector<PtsType*> pts_obj = to_pts_obj(pts);
   shuffle(pts_obj.begin(), pts_obj.end(), rng);
   
@@ -338,8 +335,6 @@ NumericMatrix assign_by_gravity2(NumericMatrix pts, NumericMatrix locs, NumericV
                                  int num_loc_choose, int num_loc_candidate, unsigned int seed, 
                                  double min_x = -87.78555, double min_y = 24.46990,
                                  int steps = 2, bool use_capacity = false) {
-  
-  // Choose multiple location per pts
   int npts = pts.nrow();
   // int nlocs = locs.nrow();
   mt19937 rng(seed);
@@ -347,7 +342,7 @@ NumericMatrix assign_by_gravity2(NumericMatrix pts, NumericMatrix locs, NumericV
   min_x_center = min_x;
   min_y_center = min_y;
   
-  vector<LocationType*> locs_obj = to_locs_obj(locs, weights, weights);
+  vector<LocationType*> locs_obj = to_locs_obj(locs, weights);
   vector<PtsType*> pts_obj = to_pts_obj(pts);
   shuffle(pts_obj.begin(), pts_obj.end(), rng);
   
