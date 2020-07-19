@@ -141,7 +141,7 @@ NumericMatrix assign_by_gravity2(NumericMatrix pts, NumericMatrix locs, NumericV
   shuffle(pts_obj.begin(), pts_obj.end(), rng);
   
   for (int i = 0; i < npts; i++) {
-    if ((i+1) % 10000 == 0) Rcout << "Assigning point " << i+1 << "\n";
+    if ((i+1) % 1000 == 0) Rcout << "Assigning point " << i+1 << "\n";
     PtsType* p = pts_obj[i];
     const int pxi = x_to_col_num(p->x);
     const int pyi = y_to_row_num(p->y);

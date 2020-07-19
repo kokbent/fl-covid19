@@ -5,8 +5,10 @@ rm(list = ls())
 #### Setting up ----
 library(raster)
 library(tidyverse)
+library(data.table)
 library(tcltk)
 library(doSNOW)
+set.seed(4326 + 3)
 
 source("code/data_path.R")
 
@@ -179,9 +181,9 @@ sum(nh$WORKER, na.rm = T)
 
 
 #### Export ----
-write_csv(hh_xy_puma %>% select(HID, x, y, SERIAL, PUMA5CE),
-          "output/hh_coords.csv")
-write_csv(person_xy %>% select(PID, HID, NHID, SEX, AGE, SCHOOL, EMPSTATD, PWSTATE2, PWPUMA00, GQ),
-          "output/person_details.csv")
-write_csv(nh %>% select(NHID, x = X, y = Y, WORKER, POP, PUMA5CE, REP_POP),
-          "output/nh.csv")
+fwrite(hh_xy_puma %>% select(HID, x, y, SERIAL, PUMA5CE),
+       "output/hh_coords.csv")
+fwrite(person_xy %>% select(PID, HID, NHID, SEX, AGE, SCHOOL, EMPSTATD, PWSTATE2, PWPUMA00, GQ),
+       "output/person_details.csv")
+fwrite(nh %>% select(NHID, x = X, y = Y, WORKER, POP, PUMA5CE, REP_POP),
+       "output/nh.csv")

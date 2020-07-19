@@ -31,5 +31,8 @@ p2_nh <- "C:/Users/kokbent/Dropbox (UFL)/COVID-FL/location_data/retirement_commu
 p2_gcsch <- "C:/Users/kokbent/Dropbox (UFL)/COVID-FL/shapefiles/gc_schools.tgz"
 p2_gcschx <- "./tmp/gc_schools/gc_schools_sep17.shp"
 
+# FL HF
+p2_hf <- "data/hf_ahca.tsv"
+
 # Generated Person data
 # p2_gen_p <- "C:/Users/kokbent/Dropbox (UFL)/COVID-FL/generated_hh_person/person_details.csv"
