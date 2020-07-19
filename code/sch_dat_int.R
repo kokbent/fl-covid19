@@ -4,14 +4,15 @@ rm(list = ls())
 library(raster)
 library(tidyverse)
 library(Rcpp)
+library(data.table)
 
 source("code/data_path.R")
-sourceCpp("code/gravity.cpp")
+sourceCpp("code/action_by_gravity.cpp")
 
 #### Data import ----
 ## PERS
-gen_pers <- read_csv("output/person_details.csv")
-gen_hh <- read_csv("output/hh_coords.csv")
+gen_pers <- fread("output/person_details.csv")
+gen_hh <- fread("output/hh_coords.csv")
 
 ## SCH
 if (dir.exists("./tmp/gc_schools/")) {
@@ -194,8 +195,8 @@ gc_sch3$WORKER <- ceiling(gc_sch3$STUDENT / 7)
 
 
 #### Export ----
-write_csv(gc_sch3, "output/sch.csv")
-write_csv(gen_pers, "output/person_details.csv")
+fwrite(gc_sch3, "output/sch.csv")
+fwrite(gen_pers, "output/person_details.csv")
 
 
 #### Some sanity check visualization ----

@@ -3,13 +3,13 @@ rm(list=ls())
 
 library(Rcpp)
 library(tidyverse)
+library(data.table)
 
-sourceCpp("code/gravity.cpp")
+sourceCpp("code/action_by_gravity.cpp")
 
-wp <- read_csv("output/wp.csv")
-head(wp)
-pers <- read_csv("output/person_details.csv")
-hh <- read_csv("output/hh_coords.csv")
+wp <- fread("output/wp.csv")
+pers <- fread("output/person_details.csv")
+hh <- fread("output/hh_coords.csv")
 
 head(wp)
 head(pers)
@@ -22,10 +22,18 @@ emp_pers <- emp_pers %>% left_join(hh %>% select(HID, x, y))
 
 rm(hh)
 
-wp2 <- wp %>%
-  group_by(x, y, TYPE, NAICS, ESS_CLASS) %>%
+## Exclude HF from aggregating because there are HF with same XY
+wp2_1 <- wp %>%
+  filter(TYPE == "hf") %>%
+  select(x, y, TYPE, NAICS, ESS_CLASS, WORKER, SERIAL) %>%
+  mutate(N = 1)
+wp2_2 <- wp %>%
+  filter(TYPE != "hf") %>%
+  group_by(x, y, TYPE, NAICS, ESS_CLASS, SERIAL) %>%
   summarise(WORKER = sum(WORKER),
             N = n())
+wp2 <- bind_rows(wp2_1, wp2_2)
+
 wp2$WID2 <- 1:nrow(wp2)
 table(wp2$TYPE)
 
@@ -33,9 +41,12 @@ wp_mat <- wp2[,c("x", "y")] %>% as.matrix
 weights <- (wp2$WORKER * 1.05) %>% round
 pts_mat <- emp_pers[,c("x", "y")] %>% as.matrix
 
+sum(weights) # This value should be substantially but not overly larger than next
+nrow(pts_mat)
+
 system.time(
   assign_mat <- assign_by_gravity(pts_mat, wp_mat, 
-                                  weights, 1000, 4326, steps = 1, use_capacity = T)
+                                  weights, 1000, 4326 + 4, steps = 1, use_capacity = T)
 )
 
 #### Check if workplaces are overassigned
@@ -54,5 +65,5 @@ emp_pers$WID2 <- assign_mat2[,2]
 pers1 <- pers %>% left_join(emp_pers %>% select(PID, WID2))
 table(is.na(pers1$WID2))
 
-write_csv(pers1, "output/pers_w_wid.csv")
-write_csv(wp2, "output/wp2.csv")
+fwrite(pers1, "output/pers_w_wid.csv")
+fwrite(wp2, "output/wp2.csv")

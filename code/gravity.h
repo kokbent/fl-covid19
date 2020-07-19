@@ -275,9 +275,17 @@ vector<LocationType*> choose_mult_loc(PtsType* p, vector<LocationType*> nearby_p
     const double size = w->weight;
     // if (dist == 0) dist = 0.001;
     raw_weights[i] = size / (dist*dist);
-    if (isinf(raw_weights[i])) raw_weights[i] = 0.0;
+    if (isinf(raw_weights[i]) || isnan(raw_weights[i])) raw_weights[i] = 0.0; // cannot share same coordinates
+    
+    // DEBUG MODE
+    // if (isnan(raw_weights[i])) {
+    //   Rcout << size << "\t" << dist << endl;
+    // }
+    
     total_weight += raw_weights[i];
   }
+  
+  // Rcout << total_weight << endl;
   
   for (int j = 0; j < num_loc_choose; j++) {
     uniform_real_distribution<double> runif(0.0, total_weight);

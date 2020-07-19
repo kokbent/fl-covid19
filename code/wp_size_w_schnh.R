@@ -3,9 +3,12 @@ rm(list=ls())
 #### Model sizes of workplaces based on WAC info and NAICS employment sizes
 library(raster)
 library(tidyverse)
+library(data.table)
+library(Rcpp)
 
 source("code/data_path.R")
 source("code/target_func.R")
+sourceCpp("code/action_by_gravity.cpp")
 
 #### Loading data ----
 ## cenacs
@@ -18,21 +21,21 @@ if (dir.exists("./tmp/cenacs")) {
 
 ## lehdwac
 if (file.exists("./data/wac.csv")) {
-  wac <- read_csv("data/wac.csv")
+  wac <- fread("data/wac.csv", keepLeadingZeros = T)
 } else if (dir.exists("./tmp/lehdwac_blk_2015")) {
   wac <- shapefile("./tmp/lehdwac_blk_2015/lehdwac_blk_2015.shp")
   wac <- wac@data
-  write_csv(wac, "./data/wac.csv")
+  fwrite(wac, "./data/wac.csv")
 } else {
   untar(p2_wac, exdir = "./tmp")
   wac <- shapefile("./tmp/lehdwac_blk_2015/lehdwac_blk_2015.shp")
   wac <- wac@data
-  write_csv(wac, "./data/wac.csv")
+  fwrite(wac, "./data/wac.csv")
 }
 
 ## ncd
 if (file.exists(p2_ncdwpx)) {
-  wp_coords <- read_csv(p2_ncdwpx)
+  wp_coords <- fread(p2_ncdwpx)
 } else {
   stop("NCD Data with essential classification not found.")
   # untar(p2_ncdwp, exdir = "./tmp")
@@ -46,7 +49,7 @@ wp_coords <- wp_coords %>%
 
 ## NH
 if (file.exists("output/nh.csv")) {
-  nh <- read_csv("output/nh.csv") %>%
+  nh <- fread("output/nh.csv") %>%
     mutate(SERIAL = NHID, TYPE = "n") %>%
     select(SERIAL, x, y, WORKER, TYPE)
 } else {
@@ -55,23 +58,32 @@ if (file.exists("output/nh.csv")) {
 
 ## SCH
 if (file.exists("output/sch.csv")) {
-  sch <- read_csv("output/sch.csv") %>%
+  sch <- fread("output/sch.csv") %>%
     mutate(SERIAL = SID, TYPE = "s") %>%
     select(SERIAL, x, y, WORKER, TYPE)
 } else {
   stop("SCH data not found.")
 }
 
+## HF
+if (file.exists("output/hf.csv")) {
+  hf <- fread("output/hf.csv") %>%
+    mutate(SERIAL = HFID, TYPE = "hf") %>%
+    select(SERIAL, x = X, y = Y, WORKER, TYPE)
+} else {
+  stop("SCH data not found.")
+}
+
 ## NAICS
 if (file.exists("data/naics_emp_wpar.csv")) {
-  naics <- read_csv("data/naics_emp_wpar.csv")
+  naics <- fread("data/naics_emp_wpar.csv")
   colnames(naics) <- c("NAICS 1 Code", "Description", paste0("grp", 1:9), "s", "xi")
 } else {
   stop("NAICS params data not found.")
 }
 
 ## NAICS 2017 - 2012 Lookup (Needed to reconcile NAICS differences)
-naics_1712 <- read_csv("data/naics_1712_lookup.csv")
+naics_1712 <- fread("data/naics_1712_lookup.csv")
 
 #### New dataframe ----
 ## Jobs per census tract
@@ -80,18 +92,43 @@ jobs_tract <- wac %>%
   summarise(JOBS = sum(TOTAL_JOBS))
 cenacs$TRACTCE10 %>% unique %>% length
 
-## WP without SCH and NH 
+## WP without SCH and NH and hospitals
 wp_coords1 <- wp_coords %>%
   dplyr::filter(!is.na(x), !is.na(y)) %>%
   dplyr::filter(!(naics >= 611110 & naics <= 611399) | is.na(naics)) %>%
-  dplyr::filter(!naics %in% c(623312, 623110) | is.na(naics))
+  dplyr::filter(!naics %in% c(623312, 623110) | is.na(naics)) %>%
+  dplyr::filter(!(naics >= 622100 & naics <= 622399) | is.na(naics))
 wp_coords1$WORKER <- NA
 wp_coords1 <- wp_coords1 %>%
   select(SERIAL = serial, x, y, WORKER, NAICS = naics, naics_essential_classification) %>%
   mutate(TYPE = "w")
 
-# Add SCH and NH
-wp_coords2 <- bind_rows(wp_coords1, nh, sch)
+## Reconcile NCD's hospitals and AHCA HF
+wp_coords_hf <- wp_coords %>%
+  dplyr::filter((naics >= 622100 & naics <= 622399))
+hf1 <- hf %>%
+  arrange(desc(WORKER))
+
+# Find nearest NCD's hospitals to AHCA HF and remove
+for (i in 1:nrow(hf1)) {
+  hf_xy <- as.matrix(hf1[i,c("x", "y")])
+  wp_hf_xymat <- as.matrix(wp_coords_hf[,c("x", "y")])
+  
+  tmp <- assign_by_gravity(pts = hf_xy, 
+                           locs = wp_hf_xymat, 
+                           weights = rep(1, nrow(wp_hf_xymat)),
+                           num_loc = 1, 
+                           seed = i)
+  wp_coords_hf <- wp_coords_hf[-tmp[,2],]
+}
+
+wp_coords_hf$WORKER <- NA
+wp_coords_hf <- wp_coords_hf %>%
+  select(SERIAL = serial, x, y, WORKER, NAICS = naics, naics_essential_classification) %>%
+  mutate(TYPE = "w")
+
+# Add Reconciled hospitals, SCH, NH and HF
+wp_coords2 <- bind_rows(wp_coords1, wp_coords_hf, nh, sch, hf)
 
 
 #### Extra analyses ----
@@ -234,4 +271,4 @@ mean(foo$WORKER - nwp_jobs$JOBS)
 wp2 <- wp1 %>%
   select(WID, TYPE, x, y, WORKER, SERIAL, NAICS, ESS_CLASS = naics_essential_classification)
 
-write_csv(wp2, "output/wp.csv")
+fwrite(wp2, "output/wp.csv")
