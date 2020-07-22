@@ -4,14 +4,15 @@ rm(list = ls())
 library(raster)
 library(tidyverse)
 library(Rcpp)
+library(data.table)
 
 source("toy2/code/data_path.R")
 sourceCpp("code/action_by_gravity.cpp")
 
 #### Data import ----
 ## PERS
-gen_pers <- read_csv("toy2/output/person_details.csv")
-gen_hh <- read_csv("toy2/output/hh_coords.csv")
+gen_pers <- fread("toy2/output/person_details.csv")
+gen_hh <- fread("toy2/output/hh_coords.csv")
 
 ## SCH
 gc_sch <- shapefile(p2_gcsch)
@@ -181,5 +182,5 @@ gc_sch3$WORKER <- ceiling(gc_sch3$STUDENT / 7)
 
 
 #### Export ----
-write_csv(gc_sch3, "toy2/output/sch.csv")
-write_csv(gen_pers, "toy2/output/person_details.csv")
+fwrite(gc_sch3, "toy2/output/sch.csv")
+fwrite(gen_pers, "toy2/output/person_details.csv")

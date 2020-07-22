@@ -134,3 +134,8 @@ tmp <- over(wp_sp, wac)
 cond <- !is.na(tmp$STATEFP10)
 wp_coords <- wp_coords[cond,]
 write_csv(wp_coords, "toy2/data/geocoded_workplaces_w_naics_w_essential.csv")
+
+#### HF data ----
+hf <- read_tsv("data/hf_ahca.tsv")
+hf1 <- hf %>% filter(County == "Escambia")
+write_csv(hf1, "toy2/data/hf_ahca.tsv")
