@@ -5,6 +5,7 @@ rm(list = ls())
 #### Setting up ----
 library(raster)
 library(tidyverse)
+library(data.table)
 library(tcltk)
 library(doSNOW)
 source("toy2/code/data_path.R")
@@ -166,9 +167,9 @@ nh <- rename(nh, POP = n)
 nh$WORKER <- ceiling(nh$POP / 6)
 sum(nh$WORKER, na.rm = T)
 
-write_csv(hh_xy_puma %>% select(HID, x, y, SERIAL, PUMA5CE),
-          "toy2/output/hh_coords.csv")
-write_csv(person_xy %>% select(PID, HID, NHID, SEX, AGE, SCHOOL, EMPSTATD, PWSTATE2, PWPUMA00, GQ),
-          "toy2/output/person_details.csv")
-write_csv(nh %>% select(NHID, x = X, y = Y, WORKER, POP, PUMA5CE, REP_POP),
-          "toy2/output/nh.csv")
+fwrite(hh_xy_puma %>% select(HID, x, y, SERIAL, PUMA5CE),
+       "toy2/output/hh_coords.csv")
+fwrite(person_xy %>% select(PID, HID, NHID, SEX, AGE, SCHOOL, EMPSTATD, PWSTATE2, PWPUMA00, GQ),
+       "toy2/output/person_details.csv")
+fwrite(nh %>% select(NHID, x = X, y = Y, WORKER, POP, PUMA5CE, REP_POP),
+       "toy2/output/nh.csv")

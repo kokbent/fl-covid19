@@ -3,8 +3,12 @@ rm(list=ls())
 #### Model sizes of workplaces based on WAC info and NAICS employment sizes
 library(raster)
 library(tidyverse)
+library(data.table)
+library(Rcpp)
+
 source("toy2/code/data_path.R")
 source("toy2/code/target_func.R")
+sourceCpp("code/action_by_gravity.cpp")
 
 #### Loading data ----
 ## cenacs
@@ -15,13 +19,13 @@ wac <- shapefile(p2_wac)
 wac <- wac@data
 
 ## ncd
-wp_coords <- read_csv(p2_ncdwp)
+wp_coords <- fread(p2_ncdwp)
 wp_coords <- wp_coords %>%
   select(-X1, -naics_classification_notes)
 
 ## NH
 if (file.exists("toy2/output/nh.csv")) {
-  nh <- read_csv("toy2/output/nh.csv") %>%
+  nh <- fread("toy2/output/nh.csv") %>%
     mutate(SERIAL = NHID, TYPE = "n") %>%
     select(SERIAL, x, y, WORKER, TYPE)
 } else {
@@ -30,23 +34,33 @@ if (file.exists("toy2/output/nh.csv")) {
 
 ## SCH
 if (file.exists("toy2/output/sch.csv")) {
-  sch <- read_csv("toy2/output/sch.csv") %>%
+  sch <- fread("toy2/output/sch.csv") %>%
     mutate(SERIAL = SID, TYPE = "s") %>%
     select(SERIAL, x, y, WORKER, TYPE)
 } else {
   stop("SCH data not found.")
 }
 
+## HF
+if (file.exists("toy2/output/hf.csv")) {
+  hf <- fread("toy2/output/hf.csv") %>%
+    mutate(SERIAL = HFID, TYPE = "hf") %>%
+    select(SERIAL, x = X, y = Y, WORKER, TYPE)
+} else {
+  stop("HF data not found.")
+}
+
+
 ## NAICS
 if (file.exists("toy2/data/naics_emp_wpar.csv")) {
-  naics <- read_csv("toy2/data/naics_emp_wpar.csv")
+  naics <- fread("toy2/data/naics_emp_wpar.csv")
   colnames(naics) <- c("NAICS 1 Code", "Description", paste0("grp", 1:9), "s", "xi")
 } else {
   stop("NAICS params data not found.")
 }
 
 ## NAICS 2017 - 2012 Lookup (Needed to reconcile NAICS differences)
-naics_1712 <- read_csv("toy2/data/naics_1712_lookup.csv")
+naics_1712 <- fread("toy2/data/naics_1712_lookup.csv")
 
 #### New dataframe ----
 ## Jobs per census tract
@@ -59,14 +73,39 @@ cenacs$TRACTCE10 %>% unique %>% length
 wp_coords1 <- wp_coords %>%
   dplyr::filter(!is.na(x), !is.na(y)) %>%
   dplyr::filter(!(naics >= 611110 & naics <= 611399) | is.na(naics)) %>%
-  dplyr::filter(!naics %in% c(623312, 623110) | is.na(naics))
+  dplyr::filter(!naics %in% c(623312, 623110) | is.na(naics)) %>%
+  dplyr::filter(!(naics >= 622100 & naics <= 622399) | is.na(naics))
 wp_coords1$WORKER <- NA
 wp_coords1 <- wp_coords1 %>%
   select(SERIAL = serial, x, y, WORKER, NAICS = naics, naics_essential_classification) %>%
   mutate(TYPE = "w")
 
-# Add SCH and NH
-wp_coords2 <- bind_rows(wp_coords1, nh, sch)
+## Reconcile NCD's hospitals and AHCA HF
+wp_coords_hf <- wp_coords %>%
+  dplyr::filter((naics >= 622100 & naics <= 622399))
+hf1 <- hf %>%
+  arrange(desc(WORKER))
+
+# Find nearest NCD's hospitals to AHCA HF and remove
+for (i in 1:nrow(hf1)) {
+  hf_xy <- as.matrix(hf1[i,c("x", "y")])
+  wp_hf_xymat <- as.matrix(wp_coords_hf[,c("x", "y")])
+  
+  tmp <- assign_by_gravity(pts = hf_xy, 
+                           locs = wp_hf_xymat, 
+                           weights = rep(1, nrow(wp_hf_xymat)),
+                           num_loc = 1, 
+                           seed = i)
+  wp_coords_hf <- wp_coords_hf[-tmp[,2],]
+}
+
+wp_coords_hf$WORKER <- NA
+wp_coords_hf <- wp_coords_hf %>%
+  select(SERIAL = serial, x, y, WORKER, NAICS = naics, naics_essential_classification) %>%
+  mutate(TYPE = "w")
+
+# Add Reconciled hospitals, SCH, NH and HF
+wp_coords2 <- bind_rows(hf, wp_coords1, wp_coords_hf, nh, sch)
 
 
 #### Extra analyses ----
@@ -206,4 +245,4 @@ abline(0, 1)
 wp2 <- wp1 %>%
   select(WID, TYPE, x, y, WORKER, SERIAL, NAICS, ESS_CLASS = naics_essential_classification)
 
-write_csv(wp2, "toy2/output/wp.csv")
+fwrite(wp2, "toy2/output/wp.csv")

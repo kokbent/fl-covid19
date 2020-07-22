@@ -10,7 +10,7 @@ if (!file.exists("sim_pop-florida-1.0.tgz")) stop("File sim_pop-florida-1.0.sqli
 untar("sim_pop-florida-1.0.tgz", exdir=".")
 
 #### Connect
-con <- dbConnect(RSQLite::SQLite(), "sim_pop-florida-1.0/sim_pop-florida-1.0.sqlite")
+con <- DBI::dbConnect(RSQLite::SQLite(), "sim_pop-florida-1.0/sim_pop-florida-1.0.sqlite")
 
 #### Pulling query using SQL
 ## Locations
