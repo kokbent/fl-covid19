@@ -112,4 +112,4 @@ ec_network_df <- ec_network_df %>%
   arrange(PID)
 
 ## Export
-fwrite(ec_network_df, "output/extracurricular2.csv")
+fwrite(ec_network_df, "output/extracurricular.csv")

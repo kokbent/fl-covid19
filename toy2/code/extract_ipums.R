@@ -1,4 +1,5 @@
 rm(list=ls())
+source("toy2/code/data_path.R")
 
 #### Extract IPUMS .dat file and store it into RDS file
 

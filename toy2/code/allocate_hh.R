@@ -6,7 +6,7 @@ rm(list = ls())
 library(raster)
 library(tidyverse)
 library(data.table)
-library(tcltk)
+#library(tcltk)
 library(doSNOW)
 source("toy2/code/data_path.R")
 
@@ -55,11 +55,12 @@ cenacs@data <- cenacs@data %>% left_join(cenacs_hh %>% select(PUMA5CE, scale))
 cl <- makeCluster(2)
 registerDoSNOW(cl)
 
-pb <- tkProgressBar(max = nrow(cenacs))
-progress <- function(n) setTkProgressBar(pb, n)
-opts <- list(progress=progress)
+#pb <- tkProgressBar(max = nrow(cenacs))
+#progress <- function(n) setTkProgressBar(pb, n)
+#opts <- list(progress=progress)
 hh_xy <- foreach(i = 1:nrow(cenacs), .packages = c("dplyr", "raster", "sp"), 
-                 .export=ls(envir=globalenv()), .options.snow = opts,
+                 # .export=ls(envir=globalenv()), .options.snow = opts,
+                 .export=ls(envir=globalenv()),
                  .combine = "rbind") %dopar% {
                    n_hh <- ceiling(cenacs$HOUSEHOLDS[i] * cenacs$scale[i])
                    N <- n_hh * 5

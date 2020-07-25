@@ -57,11 +57,11 @@ mean(tmp > tmp1)
 nrow(wp_mat) - length(tmp1) # number of workplaces with 0 workers
 
 #### Put WID to PERS
-ord <- order(assign_mat[,1])
-assign_mat2 <- assign_mat[ord,]
-head(assign_mat2)
-summary(assign_mat2[,1] - 1:nrow(assign_mat)) # Double check PID being correct
-emp_pers$WID2 <- assign_mat2[,2]
+pids <- emp_pers$PID[assign_mat[,1]]
+wid2s <- wp2$WID2[assign_mat[,2]]
+tmp <- data.frame(PID = pids, WID2 = wid2s)
+emp_pers <- emp_pers %>% left_join(tmp)
+
 pers1 <- pers %>% left_join(emp_pers %>% select(PID, WID2))
 table(is.na(pers1$WID2))
 
