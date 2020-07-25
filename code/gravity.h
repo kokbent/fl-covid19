@@ -14,7 +14,7 @@ using namespace Rcpp;
 
 // [[Rcpp::plugins("cpp11")]]
 
-double pixel_size   = 0.00416667 * 5;
+double pixel_size   = 0.00416667 * 2;
 double min_x_center = -87.78555;
 double min_y_center = 24.46990;
 

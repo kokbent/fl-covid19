@@ -171,7 +171,7 @@ study_db <- study_db %>% left_join(sch_db %>% select(sid, locid)) %>%
 work_db <- pers %>%
   select(pid, wid2) %>%
   filter(!is.na(wid2)) %>%
-  left_join(wp_db %>% select(wid2, locid)) %>%
+  left_join(loc %>% select(wid2, locid)) %>%
   select(pid, locid) %>%
   mutate(type = "w")
 
@@ -247,7 +247,7 @@ dbWriteTable(mydb, "hh_network", hh_edge)
 rm(hh_edge, hh_edge1, hh_edge2, hh_loc)
 
 ## Extracurricular (WID2 is the same as locid)
-ec <- fread("toy2/output/extracurricular2.csv")
+ec <- fread("toy2/output/extracurricular.csv")
 loc_nonhh <- loc %>% filter(type != "h")
 colnames(ec) <- c("pid", paste0("dest_locid_", 1:5))
 dbWriteTable(mydb, "extracurr", ec)

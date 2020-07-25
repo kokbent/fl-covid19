@@ -88,6 +88,8 @@ hf <- hf %>%
   left_join(loc %>% 
               filter(type == "hf") %>%
               select(wid2, locid))
+hf_db <- hf %>%
+  select(locid, hfid, ahca_number, licensed_beds)
 
 ## WP (exclude SCH & NH)
 wp <- wp %>%
@@ -171,7 +173,7 @@ study_db <- study_db %>% left_join(sch_db %>% select(sid, locid)) %>%
 work_db <- pers %>%
   select(pid, wid2) %>%
   filter(!is.na(wid2)) %>%
-  left_join(wp_db %>% select(wid2, locid)) %>%
+  left_join(loc %>% select(wid2, locid)) %>%
   select(pid, locid) %>%
   mutate(type = "w")
 
@@ -205,14 +207,15 @@ rm(reside_hh_db)
 library(dbplyr)
 library(RSQLite)
 
-dir.create("sim_pop-florida-1.0")
-mydb <- dbConnect(RSQLite::SQLite(), "sim_pop-florida-1.0/sim_pop-florida-1.0.sqlite")
+dir.create("sim_pop-florida-1.1")
+mydb <- dbConnect(RSQLite::SQLite(), "sim_pop-florida-1.1/sim_pop-florida-1.1.sqlite")
 dbWriteTable(mydb, "loc", loc)
 dbWriteTable(mydb, "pers", pers_db)
 dbWriteTable(mydb, "hh", hh_db)
 dbWriteTable(mydb, "sch", sch_db)
 dbWriteTable(mydb, "nh", nh_db)
 dbWriteTable(mydb, "wp", wp_db)
+dbWriteTable(mydb, "hf", hf_db)
 dbWriteTable(mydb, "movement", movement_db)
 dbWriteTable(mydb, "reside", reside_db)
 
@@ -247,15 +250,15 @@ dbWriteTable(mydb, "hh_network", hh_edge)
 rm(hh_edge, hh_edge1, hh_edge2, hh_loc)
 
 ## Extracurricular (WID2 is the same as locid)
-ec <- fread("output/extracurricular2.csv")
+ec <- fread("output/extracurricular.csv")
 loc_nonhh <- loc %>% filter(type != "h")
 colnames(ec) <- c("pid", paste0("dest_locid_", 1:5))
 dbWriteTable(mydb, "extracurr", ec)
 
 dbDisconnect(mydb)
 
-tar("sim_pop-florida-1.0.tgz", files = "sim_pop-florida-1.0/", compression = "gzip")
-unlink("./sim_pop-florida-1.0", recursive = T)
+tar("sim_pop-florida-1.1.tgz", files = "sim_pop-florida-1.1/", compression = "gzip")
+unlink("./sim_pop-florida-1.1", recursive = T)
 
 # dir.create("gen_dat")
 # write_delim(wp_e, "gen_dat/wp.txt")

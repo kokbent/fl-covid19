@@ -44,7 +44,7 @@ pers <- pers %>%
   left_join(hh %>% select(HID, x, y))
 pers <- pers %>%
   select(PID, HID, WID2, SID, NHID, x, y)
-pers
+head(pers)
 
 ## Code Schools and NH with WID instead
 wp_sch <- wp %>%
@@ -112,4 +112,4 @@ ec_network_df <- ec_network_df %>%
   arrange(PID)
 
 ## Export
-fwrite(ec_network_df, "toy2/output/extracurricular2.csv")
+fwrite(ec_network_df, "toy2/output/extracurricular.csv")
