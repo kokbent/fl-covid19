@@ -6,23 +6,15 @@ rm(list = ls())
 library(raster)
 library(tidyverse)
 library(data.table)
-library(tcltk)
+#library(tcltk)
 library(doSNOW)
-set.seed(4326 + 3)
+source("cty-sim/code/data_path.R")
 
-source("code/data_path.R")
-
-if (dir.exists("./tmp/cenacs")) {
-  cenacs <- shapefile("./tmp/cenacs/cenacs_2018.shp")
-} else {
-  untar(p2_cenacs, exdir = "./tmp")
-  cenacs <- shapefile("./tmp/cenacs/cenacs_2018.shp")
-}
-
+cenacs <- shapefile(p2_cenacs)
 fl_hh <- raster(p2_hh)
 cenacs_wgs <- cenacs %>% spTransform(crs(fl_hh))
 
-dat <- read_rds(ipums_tmp)
+dat <- read_rds(p2_ipums)
 hh_dat <- dat %>%
   select(YEAR, SERIAL, HHWT, PUMA, GQ) %>%
   distinct()
@@ -33,18 +25,15 @@ ct_to_puma <- read_csv("https://www2.census.gov/geo/docs/maps-data/data/rel/2010
 ct_to_puma <- ct_to_puma %>%
   filter(STATEFP == "12") # FL is 12
 
-# conversion table matches with cenacs
-mean(cenacs$TRACTCE10 %in% ct_to_puma$TRACTCE)
-mean(ct_to_puma$TRACTCE %in% cenacs$TRACTCE10)
-
 cenacs@data <- cenacs@data %>%
   left_join(ct_to_puma[,c("COUNTYFP", "TRACTCE", "PUMA5CE")], 
             by = c("COUNTYFP10" = "COUNTYFP" ,"TRACTCE10" = "TRACTCE"))
-cenacs@data$HOUSEHOLDS <- as.numeric(cenacs@data$HOUSEHOLDS)
 
 ## Calculate number of households needed in each PUMA
 # Population weight is not consistent with household weight
 # in IPUMS-ACS, so need to scale accordingly...
+
+cenacs@data$HOUSEHOLDS <- as.numeric(cenacs@data$HOUSEHOLDS)
 cenacs_hh <- cenacs@data %>%
   group_by(PUMA5CE) %>%
   summarise(HH = sum(HOUSEHOLDS),
@@ -62,16 +51,16 @@ cenacs_hh$scale <- ipums_hh$HH_need / cenacs_hh$HH
 cenacs@data <- cenacs@data %>% left_join(cenacs_hh %>% select(PUMA5CE, scale))
 
 #### Generate hh coordinates based on census tract and gridded pop ----
-## Using parallel here to speed things up
-cl <- makeCluster(5)
+# Using parallel for toy example here is a little overkill...
+cl <- makeCluster(2)
 registerDoSNOW(cl)
 
-pb <- tkProgressBar(max = nrow(cenacs))
-progress <- function(n) setTkProgressBar(pb, n)
-opts <- list(progress=progress)
-
+#pb <- tkProgressBar(max = nrow(cenacs))
+#progress <- function(n) setTkProgressBar(pb, n)
+#opts <- list(progress=progress)
 hh_xy <- foreach(i = 1:nrow(cenacs), .packages = c("dplyr", "raster", "sp"), 
-                 .export=ls(envir=globalenv()), .options.snow = opts,
+                 # .export=ls(envir=globalenv()), .options.snow = opts,
+                 .export=ls(envir=globalenv()),
                  .combine = "rbind") %dopar% {
                    n_hh <- ceiling(cenacs$HOUSEHOLDS[i] * cenacs$scale[i])
                    N <- n_hh * 5
@@ -143,7 +132,7 @@ person_xy$PID <- 1:nrow(person_xy)
 #### Moving GQ == 3 and AGE >= 55 people to NH
 nh_pop <- person_xy %>%
   filter(GQ == 3, AGE >= 55)
-nh <- read_csv("output/nh.csv")
+nh <- read_csv("cty-sim/output/nh.csv")
 
 nh_pop$NHID <- NA
 for (i in 1:length(pumas)) {
@@ -179,11 +168,9 @@ nh <- rename(nh, POP = n)
 nh$WORKER <- ceiling(nh$POP / 6)
 sum(nh$WORKER, na.rm = T)
 
-
-#### Export ----
 fwrite(hh_xy_puma %>% select(HID, x, y, SERIAL, PUMA5CE, COUNTYFP10),
-       "output/hh_coords.csv")
+       "cty-sim/output/hh_coords.csv")
 fwrite(person_xy %>% select(PID, HID, NHID, SEX, AGE, SCHOOL, EMPSTATD, PWSTATE2, PWPUMA00, GQ),
-       "output/person_details.csv")
+       "cty-sim/output/person_details.csv")
 fwrite(nh %>% select(NHID, x = X, y = Y, WORKER, POP, PUMA5CE, REP_POP),
-       "output/nh.csv")
+       "cty-sim/output/nh.csv")
