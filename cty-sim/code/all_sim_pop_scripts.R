@@ -1,3 +1,13 @@
+args <- commandArgs(trailingOnly = T)
+
+if(length(args) == 1) {
+  outname <- tolower(args)
+} else {
+  stop("Illegal argument supplied.")
+}
+
+cat(paste0("Creating dataset with name of: ", outname, "\n"))
+
 #### Build synthetic population sqlite using files in data folder
 
 source("cty-sim/code/extract_ipums.R")
@@ -10,4 +20,11 @@ source("cty-sim/code/assign_worker.R")
 source("cty-sim/code/build_hh_network.R")
 source("cty-sim/code/assign_extracurricular.R")
 source("cty-sim/code/assign_comorbidity.R")
+rm(list=ls())
+
+args <- commandArgs(trailingOnly = T)
+outname <- tolower(args)
+
+cat(paste0("Creating dataset with name of: ", outname, "\n"))
+
 source("cty-sim/code/export_gen_dat.R")

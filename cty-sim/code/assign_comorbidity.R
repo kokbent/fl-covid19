@@ -45,6 +45,15 @@ for (i in 1:length(cty)) {
   
 }
 
+## Under 18
+cond <- is.na(pers1$UNDLYCOND) & pers1$AGE <= 5
+pers1$UNDLYCOND[cond] <- rbinom(sum(cond), 1, 0.139)
+
+cond <- is.na(pers1$UNDLYCOND) & pers1$AGE > 5 & pers1$AGE <= 11
+pers1$UNDLYCOND[cond] <- rbinom(sum(cond), 1, 0.184)
+
+cond <- is.na(pers1$UNDLYCOND) & pers1$AGE > 11 & pers1$AGE <= 17
+pers1$UNDLYCOND[cond] <- rbinom(sum(cond), 1, 0.206)
 
 #### Merge and Export
 pers <- pers %>%

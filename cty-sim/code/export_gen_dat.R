@@ -1,5 +1,5 @@
 #### Post processing of data
-rm(list=ls())
+# rm(list=ls())
 
 library(data.table)
 library(tidyverse)
@@ -209,11 +209,12 @@ rm(reside_hh_db)
 #### Build DB
 
 ## Find cty name
-fips <- unique(hh_db$countyfp10)
-cnt <- fread("cty-sim/data/cnt.csv")
-cnt_name <- cnt[cnt$FIPS == fips,"TIGERNAME"] %>% as.matrix %>% as.vector
-cnt_name <- str_replace_all(cnt_name, " ", "-")
-cnt_name <- tolower(cnt_name)
+# fips <- unique(hh_db$countyfp10)
+# cnt <- fread("cty-sim/data/cnt.csv")
+# cnt_name <- cnt[cnt$FIPS == fips,"TIGERNAME"] %>% as.matrix %>% as.vector
+# cnt_name <- str_replace_all(cnt_name, " ", "-")
+# cnt_name <- tolower(cnt_name)
+cnt_name <- outname
 
 dirname <- paste0("cty-sim/sim_pop-", cnt_name, "-2.0")
 sqlitename <- paste0(dirname, paste0("/sim_pop-", cnt_name, "-2.0.sqlite"))
