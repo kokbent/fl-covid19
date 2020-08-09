@@ -39,9 +39,25 @@ table(wp2$TYPE)
 # toy example, we might need to scale it downwards...
 wp_mat <- wp2[,c("x", "y")] %>% as.matrix
 pts_mat <- emp_pers[,c("x", "y")] %>% as.matrix
-ideal_workern <- nrow(pts_mat) + 1000
-ratio <- ideal_workern / sum(wp2$WORKER)
+
+ideal_workern <- nrow(pts_mat) + 1200
+ratio <- 1
 weights <- (wp2$WORKER * ratio) %>% round
+
+if (sum(weights) > ideal_workern) {
+  tmp <- weights
+  while (sum(tmp) > ideal_workern) {
+    weights <- tmp
+    ratio <- ratio - 0.01
+    tmp <- (wp2$WORKER * ratio) %>% round
+  }
+} else {
+  while (sum(weights) <= ideal_workern) {
+    ratio <- ratio + 0.01
+    weights <- (wp2$WORKER * ratio) %>% round
+  }
+}
+
 
 sum(weights) # This value should be substantially but not overly larger than next
 nrow(pts_mat)
