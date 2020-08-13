@@ -26,6 +26,8 @@ if (length(arg) < 1) {
 cnt <- str_remove(tgz_file, "sim_pop-") %>% str_remove("-2.0.tgz")
 folder <- str_remove(tgz_file, ".tgz")
 sqlite_file <- str_replace(tgz_file, ".tgz", ".sqlite")
+out_folder <- paste0("sim_pop-", cnt, "/")
+dir.create(out_folder)
 
 #### Unpack
 message("Unpacking files...")
@@ -65,7 +67,7 @@ loc <- loc %>%
 
 message("Preview for loc")
 print(head(loc))
-fwrite(loc, paste0("locations-", cnt, ".txt"), sep = " ")
+fwrite(loc, paste0(out_folder, "locations-", cnt, ".txt"), sep = " ")
 
 ## Persons
 sql <- "SELECT p.pid, r.locid AS home_id, p.sex, p.age, m.locid AS day_id, p.undlycond
@@ -85,9 +87,9 @@ pers$undlycond[is.na(pers$undlycond)] <- -1
 message("Preview for pers")
 print(head(pers))
 fwrite(pers %>% select(-undlycond), 
-       paste0("population-", cnt, ".txt"), sep = " ")
+       paste0(out_folder, "population-", cnt, ".txt"), sep = " ")
 fwrite(pers %>% select(-home_id, -day_id), 
-       paste0("comorbidity-", cnt, ".txt"), sep = " ")
+       paste0(out_folder, "comorbidity-", cnt, ".txt"), sep = " ")
 
 rm(hh_nonnh, loc, pers, wp)
 
@@ -99,7 +101,7 @@ hh_network$locid2 <- hh_network$locid2 - 1
 
 message("Preview for hh_network")
 print(head(hh_network))
-fwrite(hh_network, paste0("network-", cnt, ".txt"), 
+fwrite(hh_network, paste0(out_folder, "network-", cnt, ".txt"), 
        sep = " ", col.names = F)
 
 rm(hh_network)
@@ -110,7 +112,7 @@ ec <- ec - 1
 
 message("Preview for ec")
 print(head(ec))
-fwrite(ec, paste0("extracurricular-", cnt, ".txt"), sep = " ")
+fwrite(ec, paste0(out_folder, "extracurricular-", cnt, ".txt"), sep = " ")
 
 #### Finish and kill the unpacked files
 message("Removing unpacked files...")
