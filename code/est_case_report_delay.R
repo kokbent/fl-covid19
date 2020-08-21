@@ -8,7 +8,7 @@ ll$ChartDate <- ymd_hms(ll$ChartDate) %>% as.Date
 ll$ret_day <- as.numeric(ll$ChartDate - ll$EventDate)
 
 #### Empirical (alpha = shape, beta = scale)
-dt <- seq(ymd("2020-03-01"), ymd("2020-07-10"), by = 1)
+dt <- seq(ymd("2020-03-01"), ymd("2020-08-15"), by = 1)
 alpha <- beta <- rep(NA, length(dt))
 expect <- variance <- rep(NA, length(dt))
 for (i in 1:length(dt)) {
@@ -41,10 +41,10 @@ plot(dt_extend, exp(predict(mod_expect_nolim, newdf)), type="l",
      xlab = "", ylab = "Expectation", main = "Assym. at 0")
 points(dt, expect)
 
-mod_expect_lim <- gam(log(expect-1) ~ s(day))
-plot(dt_extend, exp(predict(mod_expect_lim, newdf)) + 1, type="l",
-     ylim = c(0, max(exp(predict(mod_expect_lim, newdf)) + 1)),
-     xlab = "", ylab = "Expectation", main = "Assym. at 1")
+mod_expect_lim <- gam(log(expect-0.2) ~ s(day))
+plot(dt_extend, exp(predict(mod_expect_lim, newdf)) + 0.2, type="l",
+     ylim = c(0, max(exp(predict(mod_expect_lim, newdf)) + 0.2)),
+     xlab = "", ylab = "Expectation", main = "Assym. at 0.2")
 points(dt, expect)
 
 sd1 <- sqrt(variance)
@@ -54,14 +54,14 @@ plot(dt_extend, exp(predict(mod_sd_nolim, newdf)), type="l",
      xlab = "", ylab = "SD", main = "Assym. at 0")
 points(dt, sd1)
 
-mod_sd_lim <- gam(log(sd1-2) ~ s(day))
-plot(dt_extend, exp(predict(mod_sd_lim, newdf)) + 2, type="l",
-     ylim = c(0, max(exp(predict(mod_sd_lim, newdf)) + 2)),
+mod_sd_lim <- gam(log(sd1-0.5) ~ s(day))
+plot(dt_extend, exp(predict(mod_sd_lim, newdf)) + 0.5, type="l",
+     ylim = c(0, max(exp(predict(mod_sd_lim, newdf)) + 0.5)),
      xlab = "", ylab = "SD", main = "Assym. at 2")
 points(dt, sd1)
 
-mod_expect <- exp(predict(mod_expect_lim, newdf)) + 1
-mod_sd <- exp(predict(mod_sd_lim, newdf)) + 2
+mod_expect <- exp(predict(mod_expect_lim, newdf)) + 0.2
+mod_sd <- exp(predict(mod_sd_lim, newdf)) + 0.5
 mod_variance <- mod_sd^2
 
 mod_alpha <- mod_expect^2 / mod_variance
@@ -75,4 +75,4 @@ df <- data.frame(date = dt_extend,
                  a_shape = mod_alpha,
                  b_scale = mod_beta)
 
-write_csv(df, "output/case_report_delay.csv")
+write_csv(df, "ts/case_report_delay.csv")
