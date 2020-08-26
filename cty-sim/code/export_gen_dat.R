@@ -216,8 +216,8 @@ rm(reside_hh_db)
 # cnt_name <- tolower(cnt_name)
 cnt_name <- outname
 
-dirname <- paste0("cty-sim/sim_pop-", cnt_name, "-2.0")
-sqlitename <- paste0(dirname, paste0("/sim_pop-", cnt_name, "-2.0.sqlite"))
+dirname <- paste0("cty-sim/sim_pop-", cnt_name, "-2.1")
+sqlitename <- paste0(dirname, paste0("/sim_pop-", cnt_name, "-2.1.sqlite"))
 dir.create(dirname)
 mydb <- dbConnect(RSQLite::SQLite(), sqlitename)
 dbWriteTable(mydb, "loc", loc)
@@ -257,17 +257,35 @@ hh_edge2 <- hh_edge2$locid
 hh_edge <- data.frame(locid1 = hh_edge1, locid2 = hh_edge2)
 dbWriteTable(mydb, "hh_network", hh_edge)
 
-rm(hh_edge, hh_edge1, hh_edge2, hh_loc)
+rm(hh_edge, hh_edge1, hh_edge2)
+
+## Neighbour Network
+nb_edge <- fread("cty-sim/output/neighbour_network.csv")
+
+nb_edge1 <- nb_edge %>%
+  select(hid1) %>%
+  left_join(hh_loc, by = c("hid1" = "hid"))
+nb_edge1 <- nb_edge1$locid
+
+nb_edge2 <- nb_edge %>%
+  select(hid2) %>%
+  left_join(hh_loc, by = c("hid2" = "hid"))
+nb_edge2 <- nb_edge2$locid
+
+nb_edge <- data.frame(locid1 = nb_edge1, locid2 = nb_edge2)
+dbWriteTable(mydb, "nb_network", nb_edge)
+
+rm(nb_edge, nb_edge1, nb_edge2, hh_loc)
 
 ## Extracurricular (WID2 is the same as locid)
-ec <- fread("cty-sim/output/extracurricular.csv")
-loc_nonhh <- loc %>% filter(type != "h")
-colnames(ec) <- c("pid", paste0("dest_locid_", 1:5))
-dbWriteTable(mydb, "extracurr", ec)
+# ec <- fread("cty-sim/output/extracurricular.csv")
+# loc_nonhh <- loc %>% filter(type != "h")
+# colnames(ec) <- c("pid", paste0("dest_locid_", 1:5))
+# dbWriteTable(mydb, "extracurr", ec)
 
 dbDisconnect(mydb)
 
-tgzname <- paste0("sim_pop-", cnt_name, "-2.0.tgz")
+tgzname <- paste0("sim_pop-", cnt_name, "-2.1.tgz")
 filesname <- str_split(dirname, "/")[[1]][2]
 setwd("cty-sim/")
 tar(tgzname, files = filesname, compression = "gzip")
