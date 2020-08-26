@@ -9,6 +9,8 @@ if(length(args) == 1) {
 cat(paste0("Creating dataset with name of: ", outname, "\n"))
 
 #### Build synthetic population sqlite using files in data folder
+dir.create("state-sim/output")
+dir.create("state-sim/tmp")
 
 source("state-sim/code/extract_ipums.R")
 source("state-sim/code/nh_dat_int.R")
@@ -18,6 +20,7 @@ source("state-sim/code/hf_dat_int.R")
 source("state-sim/code/wp_size_w_schnh.R")
 source("state-sim/code/assign_worker.R")
 source("state-sim/code/build_hh_network.R")
+source("cty-sim/code/build_neighbour_network.R")
 # source("state-sim/code/assign_extracurricular.R")
 source("state-sim/code/assign_comorbidity.R")
 rm(list=ls())

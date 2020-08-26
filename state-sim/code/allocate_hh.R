@@ -52,7 +52,7 @@ cenacs@data <- cenacs@data %>% left_join(cenacs_hh %>% select(PUMA5CE, scale))
 
 #### Generate hh coordinates based on census tract and gridded pop ----
 # Using parallel for toy example here is a little overkill...
-cl <- makeCluster(4)
+cl <- makeCluster(5)
 registerDoSNOW(cl)
 
 #pb <- tkProgressBar(max = nrow(cenacs))
