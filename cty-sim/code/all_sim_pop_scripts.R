@@ -10,6 +10,9 @@ cat(paste0("Creating dataset with name of: ", outname, "\n"))
 
 #### Build synthetic population sqlite using files in data folder
 
+dir.create("cty-sim/output")
+dir.create("cty-sim/tmp")
+
 source("cty-sim/code/extract_ipums.R")
 source("cty-sim/code/nh_dat_int.R")
 source("cty-sim/code/allocate_hh.R")
