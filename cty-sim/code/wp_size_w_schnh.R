@@ -21,7 +21,7 @@ wac <- wac@data
 ## ncd
 wp_coords <- fread(p2_ncdwp)
 wp_coords <- wp_coords %>%
-  select(-X1, -naics_classification_notes)
+  select(-naics_classification_notes)
 
 ## NH
 if (file.exists("cty-sim/output/nh.csv")) {

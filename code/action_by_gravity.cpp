@@ -126,7 +126,8 @@ NumericMatrix assign_by_gravity(NumericMatrix pts, NumericMatrix locs, NumericVe
 NumericMatrix assign_by_gravity2(NumericMatrix pts, NumericMatrix locs, NumericVector weights,
                                  int num_loc_choose, int num_loc_candidate, unsigned int seed, 
                                  double min_x = -87.78555, double min_y = 24.46990,
-                                 int steps = 2, bool use_capacity = false) {
+                                 int steps = 2, bool use_capacity = false, 
+                                 bool replace = false) {
   
   // Choose multiple location per pts
   int npts = pts.nrow();
@@ -147,7 +148,7 @@ NumericMatrix assign_by_gravity2(NumericMatrix pts, NumericMatrix locs, NumericV
     const int pyi = y_to_row_num(p->y);
     
     vector<LocationType*> nearby_places = get_nearby_places2(pxi, pyi, locs_obj, num_loc_candidate, steps);
-    vector<LocationType*> chosen = choose_mult_loc(p, nearby_places, num_loc_choose, rng);
+    vector<LocationType*> chosen = choose_mult_loc(p, nearby_places, num_loc_choose, rng, replace);
     
     out(i, 0) = p->id;
     for (int j = 0; j < num_loc_choose; j++) {

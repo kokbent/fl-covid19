@@ -244,12 +244,13 @@ LocationType* choose_one_loc(PtsType* p, vector<LocationType*> nearby_places, mt
     // if (dist == 0) dist = 0.001;
     const double size = w->weight;
     raw_weights[i] = size / (dist*dist);
+    if (isinf(raw_weights[i]) || isnan(raw_weights[i])) raw_weights[i] = 0.0; // cannot share same coordinates
     total_weight += raw_weights[i];
   }
   
   uniform_real_distribution<double> runif(0.0, total_weight);
   double r = runif(rng);
-  
+
   for (unsigned int i = 0; i < raw_weights.size(); ++i) {
     if (r < raw_weights[i]) {
       chosen_place = nearby_places[i];
@@ -264,7 +265,8 @@ LocationType* choose_one_loc(PtsType* p, vector<LocationType*> nearby_places, mt
 
 
 vector<LocationType*> choose_mult_loc(PtsType* p, vector<LocationType*> nearby_places,
-                                      int num_loc_choose, mt19937& rng) {
+                                      int num_loc_choose, mt19937& rng,
+                                      bool replace = false) {
   assert(nearby_places.size() > 0);
   vector<LocationType*> chosen_places;
   vector<double> raw_weights(nearby_places.size(), 0.0);
@@ -296,7 +298,7 @@ vector<LocationType*> choose_mult_loc(PtsType* p, vector<LocationType*> nearby_p
       if (r < raw_weights[i]) {
         chosen_places.push_back(nearby_places[i]);
         total_weight -= raw_weights[i];
-        raw_weights[i] = raw_weights[i] - raw_weights[i];
+        if (!replace) raw_weights[i] = raw_weights[i] - raw_weights[i];
         break;
       } else {
         r -= raw_weights[i];
