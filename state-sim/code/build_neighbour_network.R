@@ -3,14 +3,14 @@ library(raster)
 library(tidyverse)
 library(abmgravity)
 library(data.table)
-library(foreach)
-library(doSNOW)
+library(future)
+library(furrr)
 source("state-sim/code/data_path.R")
 
 coeff <- 0.45
-ncore <- 4
+ncore <- 3 
 
-#### Build household network
+## Build household network
 pers <- fread("state-sim/output/pers_w_wid.csv")
 hh <- fread("state-sim/output/hh_coords.csv")
 nh <- fread("state-sim/output/nh.csv")
@@ -60,33 +60,62 @@ df <- data.frame(start = 0:(ncore - 1) * slice_size + 1,
                  end = 1:ncore * slice_size)
 df$end[ncore] <- nrow(pts_mat)
 
-rm(pers, hh, nh, hh_nonnh, hh_nh, hh_spdf)
+rm(pers, hh, nh, hh_nonnh, hh_nh, hh_spdf, hh_wneighbour, ras, popden_ras)
 print(df)
 
 ## Run away with it!
-cl <- makeCluster(ncore)
-registerDoSNOW(cl)
+#cl <- makeCluster(ncore)
+#registerDoSNOW(cl)
+plan(multisession, workers = ncore)
 
-system.time({
-  edge_list <- foreach(i=1:ncore,
-                       .packages = "abmgravity") %dopar% {
-                         pts_mat_sub <- pts_mat[df$start[i]:df$end[i],]
-                         assign_mat <- assign_by_gravity(pts = pts_mat_sub[,2:3], 
-                                                         locs = loc_mat[,2:3], 
-                                                         weights = weights,
-                                                         num_loc = 1000, 
-                                                         seed = 4326 + i * 28, 
-                                                         steps = 1)
-                         hid1 <- pts_mat_sub[assign_mat[,1], 1]
-                         hid2 <- loc_mat[,1][assign_mat[,2]]
-                         
-                         hid_mat <- cbind(hid1, hid2)
-                         hid_mat
-                       }
-  
-})
+assign_nb <- function (pts_mat, loc_mat, weights, i) {
+  assign_mat <- assign_by_gravity(pts = pts_mat[,2:3],
+                                  locs = loc_mat[,2:3],
+                                  weights = weights,
+                                  num_loc = 1000,
+                                  seed = 4326 + i * 28,
+                                  steps = 1)
+  hid1 <- pts_mat[assign_mat[,1], 1]
+  hid2 <- loc_mat[,1][assign_mat[,2]]
 
-stopCluster(cl)
+  hid_mat <- cbind(hid1, hid2)
+  hid_mat
+}
+
+pts_mat_l <- list()
+
+for (j in 1:ncore) {
+  pts_mat_l[[j]] <- pts_mat[df$start[j]:df$end[j],]
+}
+
+rm(pts_mat)
+gc()
+
+edge_list <- future_map2(pts_mat_l, 1:ncore,
+			 ~ assign_nb(.x, loc_mat, weights, .y))
+
+#system.time({
+#  edge_list <- foreach(i=1:ncore,
+#                       .packages = "abmgravity") %dopar% {
+#	  		 sink(paste0("neighbourhood_log", i, ".txt"), append=TRUE)
+#                         #pts_mat_sub <- pts_mat[df$start[i]:df$end[i],]
+#			 pts_mat_sub <- pts_mat[1:100000,]
+#                         assign_mat <- assign_by_gravity(pts = pts_mat_sub[,2:3], 
+#                                                         locs = loc_mat[,2:3], 
+#                                                         weights = weights,
+#                                                         num_loc = 1000, 
+#                                                         seed = 4326 + i * 28, 
+#                                                         steps = 1)
+#                         hid1 <- pts_mat_sub[assign_mat[,1], 1]
+#                         hid2 <- loc_mat[,1][assign_mat[,2]]
+#                         
+#                         hid_mat <- cbind(hid1, hid2)
+#                         hid_mat
+#                       }
+#  
+#})
+
+#stopCluster(cl)
 edges <- do.call("rbind", edge_list)
 
 # system.time(

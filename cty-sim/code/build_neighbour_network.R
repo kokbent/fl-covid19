@@ -11,7 +11,7 @@ source("cty-sim/code/data_path.R")
 # sourceCpp("code/action_by_gravity.cpp")
 
 coeff <- 0.45
-ncore <- 2
+ncore <- 5 
 
 #### Build household network
 pers <- fread("cty-sim/output/pers_w_wid.csv")
@@ -84,7 +84,7 @@ system.time({
                          hid_mat
                        }
   
-})
+}) %>% print()
 
 stopCluster(cl)
 edges <- do.call("rbind", edge_list)
