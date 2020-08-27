@@ -30,4 +30,4 @@ outname <- tolower(args)
 
 cat(paste0("Creating dataset with name of: ", outname, "\n"))
 
-source("cty-sim/code/export_gen_dat.R")
+source("state-sim/code/export_gen_dat.R")

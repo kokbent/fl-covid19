@@ -253,7 +253,7 @@ dbWriteTable(mydb, "hh_network", hh_edge)
 rm(hh_edge, hh_edge1, hh_edge2)
 
 ## Neighbour Network
-nb_edge <- fread("cty-sim/output/neighbour_network.csv")
+nb_edge <- fread("state-sim/output/neighbour_network.csv")
 
 nb_edge1 <- nb_edge %>%
   select(hid1) %>%
