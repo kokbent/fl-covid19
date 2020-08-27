@@ -91,49 +91,13 @@ for (j in 1:ncore) {
 rm(pts_mat)
 gc()
 
-edge_list <- future_map2(pts_mat_l, 1:ncore,
-			 ~ assign_nb(.x, loc_mat, weights, .y))
+system.time(
+  edge_list <- future_map2(pts_mat_l, 1:ncore,
+                           ~ assign_nb(.x, loc_mat, weights, .y))
+)
 
-#system.time({
-#  edge_list <- foreach(i=1:ncore,
-#                       .packages = "abmgravity") %dopar% {
-#	  		 sink(paste0("neighbourhood_log", i, ".txt"), append=TRUE)
-#                         #pts_mat_sub <- pts_mat[df$start[i]:df$end[i],]
-#			 pts_mat_sub <- pts_mat[1:100000,]
-#                         assign_mat <- assign_by_gravity(pts = pts_mat_sub[,2:3], 
-#                                                         locs = loc_mat[,2:3], 
-#                                                         weights = weights,
-#                                                         num_loc = 1000, 
-#                                                         seed = 4326 + i * 28, 
-#                                                         steps = 1)
-#                         hid1 <- pts_mat_sub[assign_mat[,1], 1]
-#                         hid2 <- loc_mat[,1][assign_mat[,2]]
-#                         
-#                         hid_mat <- cbind(hid1, hid2)
-#                         hid_mat
-#                       }
-#  
-#})
-
-#stopCluster(cl)
 edges <- do.call("rbind", edge_list)
-
-# system.time(
-#   assign_mat <- assign_by_gravity(pts = pts_mat[1:1000,2:3], 
-#                                   locs = loc_mat, 
-#                                   weights = weights,
-#                                   num_loc = 1000, 
-#                                   seed = 4326 + 28, 
-#                                   steps = 1)
-# )
-# 
-# hid1 <- pts_mat[assign_mat[,1], 1]
-# hid2 <- hh_wneighbour$HID[assign_mat[,2]]
-
 edges <- as.data.table(edges)
 
 ## Export
-# write_csv(as.data.frame(edges), "./tmp/edges.csv")
-# write_delim(as.data.frame(edges_hid), "./output/network-florida.txt", col_names = F)
-# file.copy("./output/network-florida.txt", "sim_pop-florida/network-florida.txt")
 fwrite(edges, "state-sim/output/neighbour_network.csv")

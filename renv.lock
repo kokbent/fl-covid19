@@ -1,6 +1,6 @@
 {
   "R": {
-    "Version": "3.6.3",
+    "Version": "3.5.3",
     "Repositories": [
       {
         "Name": "CRAN",
@@ -405,6 +405,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "780713bd2f53156fae001443dcdbdcd5"
+    },
+    "furrr": {
+      "Package": "furrr",
+      "Version": "0.1.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "c1f60eafdbcbea57078aa6f501974d2a"
     },
     "future": {
       "Package": "future",
