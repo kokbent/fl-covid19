@@ -103,6 +103,7 @@ wp_db <- wp %>%
   select(locid, wid2, worker, naics, essential = ess_class) %>%
   mutate(essential = case_when(
     is.na(essential) ~ "n",
+    essential == "" ~ "n",
     essential == "Essential" ~ "y",
     essential == "Essential*" ~ "y",
     essential == "Nonessential" ~ "n"
@@ -237,6 +238,7 @@ rm(nh_db, nh)
 rm(wp_db, wp)
 rm(movement_db)
 rm(reside_db)
+gc()
 
 ## HH Network
 hh_edge <- fread("cty-sim/output/hh_network.csv")

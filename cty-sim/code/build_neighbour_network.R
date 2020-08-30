@@ -51,7 +51,7 @@ hh_wneighbour <- hh_nonnh %>%
 repl <- rep(1:nrow(hh_wneighbour), hh_wneighbour$neighbour)
 pts_mat <- hh_wneighbour[repl, c("HID", "x", "y")] %>% as.matrix
 rownames(pts_mat) <- NULL
-loc_mat <- hh_wneighbour[, c("x", "y")] %>% as.matrix
+loc_mat <- hh_wneighbour[, c("HID", "x", "y")] %>% as.matrix
 weights <- hh_wneighbour$neighbour
 
 
@@ -64,7 +64,7 @@ rm(pers, hh, nh, hh_nonnh, hh_nh, hh_spdf, hh_wneighbour, ras, popden_ras)
 print(df)
 
 ## Run away with it!
-plan(multisession, workers = ncore)
+plan(multisession(workers = ncore))
 
 assign_nb <- function (pts_mat, loc_mat, weights, i) {
   assign_mat <- assign_by_gravity(pts = pts_mat[,2:3],
