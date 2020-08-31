@@ -64,7 +64,7 @@ rm(pers, hh, nh, hh_nonnh, hh_nh, hh_spdf, hh_wneighbour, ras, popden_ras)
 print(df)
 
 ## Run away with it!
-plan(multisession(workers = ncore))
+plan(multisession, workers = ncore)
 
 assign_nb <- function (pts_mat, loc_mat, weights, i) {
   assign_mat <- assign_by_gravity(pts = pts_mat[,2:3],
