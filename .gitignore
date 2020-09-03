@@ -11,6 +11,11 @@ tmp/
 cty-sim/data
 cty-sim/output
 cty-sim/*.tgz
+cty-sim/sim_pop-*/
 state-sim/data
 state-sim/output
 state-sim/*.tgz
+*.png
+!ts/*.png
+*.pdf
+./*.tgz
