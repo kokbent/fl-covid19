@@ -10,6 +10,7 @@ line_list$ChartDate <- ymd_hms(line_list$ChartDate) %>% as.Date()
 
 ll <- line_list
 ll$Week <- epiweek(ll$EventDate)
+ll$Age <- as.numeric(ll$Age)
 ll$Age_group <- as.character(ll$Age_group)
 ll$Age_group[ll$Age_group == "5-14 years"] <- "05-14 years"
 ll$Age_group[ll$Age_group == "0-4 years"] <- "00-04 years"
