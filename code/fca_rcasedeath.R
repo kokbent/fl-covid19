@@ -2,6 +2,17 @@
 library(tidyverse)
 library(data.table)
 library(lubridate)
+library(googlesheets4)
+
+if (packageVersion("googlesheets4") == "0.2.0") {
+  gs4_auth("kokbent@gmail.com")
+} else {
+  sheets_auth("kokbent@gmail.com")
+}
+
+dat <- sheets_read("1EUr3mhs1PnN4HrF4HgYH1EalQwOgH1nwhHddpZ-fHJg") %>%
+  filter(!is.na(CRDeath))
+dat$Date <- as.Date(dat$Date)
 
 download.file("https://opendata.arcgis.com/datasets/0fede0f25af1408683370cde9b492e7c_0.csv",
               "data/FCA_county.csv")
@@ -36,6 +47,11 @@ for (i in 1:length(counties)) {
     group_by(Date) %>%
     summarise(rcase = sum(cases), rdeath = sum(deaths_rep)) %>%
     arrange(Date)
+  
+  if(i == 7) {
+    df <- df %>% left_join(dat[,c("Date", "RNewHosp")]) %>%
+      rename(rhosp = RNewHosp)
+  }
   
   outfile <- paste0("ts/rcasedeath-", tolower(nombre), ".csv")
   fwrite(df, outfile)
