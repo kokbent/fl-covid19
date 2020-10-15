@@ -15,6 +15,7 @@ cty-sim/sim_pop-*/
 state-sim/data
 state-sim/output
 state-sim/*.tgz
+state-sim/sim_pop-*/
 *.png
 !ts/*.png
 *.pdf
