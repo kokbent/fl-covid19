@@ -20,3 +20,4 @@ state-sim/sim_pop-*/
 !ts/*.png
 *.pdf
 ./*.tgz
+.DS_Store
