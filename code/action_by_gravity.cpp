@@ -78,6 +78,77 @@ NumericMatrix build_network(NumericMatrix locs, NumericVector weights,
 }
 
 // [[Rcpp::export]]
+NumericMatrix build_network_wcomp(NumericMatrix locs, NumericVector weights,
+                                  NumericVector compliance,
+                                  int num_loc_candidate, unsigned int seed, 
+                                  double min_x = -87.78555, double min_y = 24.46990,
+                                  int steps = 2) {
+  
+  // Build network among locs based on weights
+  int nlocs = locs.nrow();
+  vector<EdgeType*> edges;
+  mt19937 rng(seed);
+  min_x_center = min_x;
+  min_y_center = min_y;
+  
+  vector<LocationType*> locs_obj = to_locs_obj_wcomp(locs, weights, weights, compliance);
+  vector<LocationType*> locs_candidate = locs_obj;
+  shuffle(locs_obj.begin(), locs_obj.end(), rng);
+  
+  Rcout << "Starting to loop\n";
+  for (int i = 0; i < nlocs; i++) {
+    if ((i+1) % 1000 == 0) Rcout << "Cycling through locs " << i+1 << "\n";
+    LocationType* l = locs_obj[i];
+    PtsType* p = new PtsType();
+    p->id = l->id;
+    p->x = l->x;
+    p->y = l->y;
+    
+    if (l->capacity == 0) continue;
+    if (l->capacity > locs_candidate.size()) continue;
+    const int pxi = x_to_col_num(p->x);
+    const int pyi = y_to_row_num(p->y);
+    vector<LocationType*> chosen;
+    
+    if (locs_candidate.size() <= num_loc_candidate) {
+      locs_candidate.erase(std::remove(locs_candidate.begin(), locs_candidate.end(), l));
+      chosen = choose_mult_loc(p, locs_candidate, l->capacity, rng, false, l->compliance);
+    } else {
+      locs_candidate.erase(std::remove(locs_candidate.begin(), locs_candidate.end(), l));
+      vector<LocationType*> nearby_places = get_nearby_places2(pxi, pyi, locs_candidate, 
+                                                               num_loc_candidate, steps);
+      chosen = choose_mult_loc(p, nearby_places, l->capacity, rng, false, l->compliance);
+    }
+    
+    l->capacity = 0;
+    
+    for (unsigned int j = 0; j < chosen.size(); j++) {
+      EdgeType* e = new EdgeType();
+      e->id1 = l->id;
+      e->id2 = chosen[j]->id;
+      
+      edges.push_back(e);
+      
+      chosen[j]->weight--;
+      chosen[j]->capacity--;
+      if (chosen[j]->capacity == 0) {
+        locs_candidate.erase(std::remove(locs_candidate.begin(), locs_candidate.end(), chosen[j]));
+      }
+    }
+    
+  }
+  
+  NumericMatrix out(edges.size(), 2);
+  
+  for (unsigned int k = 0; k < edges.size(); k++) {
+    out(k, 0) = edges[k]->id1;
+    out(k, 1) = edges[k]->id2;
+  }
+  
+  return(out);
+}
+
+// [[Rcpp::export]]
 NumericMatrix assign_by_gravity(NumericMatrix pts, NumericMatrix locs, NumericVector weights,
                                 int num_loc, unsigned int seed, 
                                 double min_x = -87.78555, double min_y = 24.46990,

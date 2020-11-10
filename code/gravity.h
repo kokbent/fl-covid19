@@ -32,6 +32,7 @@ struct LocationType {
   map<string,int> pixel = {{"xi",0}, {"yi",0}};
   int weight;
   int capacity;
+  double compliance = -1.0;
 };
 
 // struct StartEnd {
@@ -93,6 +94,31 @@ vector<LocationType*> to_locs_obj (NumericMatrix locs, NumericVector weights,
     w->y = locs(i, 1);
     w->weight = weights[i];
     w->capacity = capacity[i];
+    
+    w->pixel["xi"] = x_to_col_num(w->x);
+    w->pixel["yi"] = y_to_row_num(w->y);
+    
+    locs_vec.push_back(w);
+  }
+  
+  sort(locs_vec.begin(), locs_vec.end(), xy_cmp);
+  
+  return(locs_vec);
+}
+
+vector<LocationType*> to_locs_obj_wcomp(NumericMatrix locs, NumericVector weights,
+                                        NumericVector capacity, NumericVector compliance) {
+  int nlocs = locs.nrow();
+  vector<LocationType*> locs_vec;
+  
+  for (int i = 0; i < nlocs; i++) {
+    LocationType* w = new LocationType();
+    w->id = i + 1;
+    w->x = locs(i, 0);
+    w->y = locs(i, 1);
+    w->weight = weights[i];
+    w->capacity = capacity[i];
+    w->compliance = compliance[i];
     
     w->pixel["xi"] = x_to_col_num(w->x);
     w->pixel["yi"] = y_to_row_num(w->y);
@@ -266,7 +292,7 @@ LocationType* choose_one_loc(PtsType* p, vector<LocationType*> nearby_places, mt
 
 vector<LocationType*> choose_mult_loc(PtsType* p, vector<LocationType*> nearby_places,
                                       int num_loc_choose, mt19937& rng,
-                                      bool replace = false) {
+                                      bool replace = false, double compliance = -1.0) {
   assert(nearby_places.size() > 0);
   vector<LocationType*> chosen_places;
   vector<double> raw_weights(nearby_places.size(), 0.0);
@@ -275,14 +301,15 @@ vector<LocationType*> choose_mult_loc(PtsType* p, vector<LocationType*> nearby_p
     const LocationType* w = nearby_places[i];
     double dist = haversine(p->x, p->y, w->x, w->y);
     const double size = w->weight;
-    // if (dist == 0) dist = 0.001;
-    raw_weights[i] = size / (dist*dist);
-    if (isinf(raw_weights[i]) || isnan(raw_weights[i])) raw_weights[i] = 0.0; // cannot share same coordinates
     
-    // DEBUG MODE
-    // if (isnan(raw_weights[i])) {
-    //   Rcout << size << "\t" << dist << endl;
-    // }
+    if (compliance > 0.0) {
+      double compliance_adjust = 1 - abs(compliance - w->compliance);
+      raw_weights[i] = compliance_adjust * size / (dist*dist);
+    } else {
+      raw_weights[i] = size / (dist*dist);
+    }
+    
+    if (isinf(raw_weights[i]) || isnan(raw_weights[i])) raw_weights[i] = 0.0; // cannot share same coordinates
     
     total_weight += raw_weights[i];
   }

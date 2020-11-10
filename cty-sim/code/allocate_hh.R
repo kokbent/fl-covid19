@@ -168,7 +168,12 @@ nh <- rename(nh, POP = n)
 nh$WORKER <- ceiling(nh$POP / 6)
 sum(nh$WORKER, na.rm = T)
 
-fwrite(hh_xy_puma %>% select(HID, x, y, SERIAL, PUMA5CE, COUNTYFP10),
+#### Assign compliance score: for now at random
+hh_xy_puma$compliance <- runif(nrow(hh_xy_puma))
+
+
+#### Export
+fwrite(hh_xy_puma %>% select(HID, x, y, SERIAL, PUMA5CE, COUNTYFP10, compliance),
        "cty-sim/output/hh_coords.csv")
 fwrite(person_xy %>% select(PID, HID, NHID, SEX, AGE, SCHOOL, EMPSTATD, PWSTATE2, PWPUMA00, GQ),
        "cty-sim/output/person_details.csv")
