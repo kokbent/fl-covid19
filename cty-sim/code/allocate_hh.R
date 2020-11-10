@@ -10,6 +10,7 @@ library(data.table)
 library(doSNOW)
 source("cty-sim/code/data_path.R")
 
+ncore <- 4
 cenacs <- shapefile(p2_cenacs)
 fl_hh <- raster(p2_hh)
 cenacs_wgs <- cenacs %>% spTransform(crs(fl_hh))
@@ -52,7 +53,7 @@ cenacs@data <- cenacs@data %>% left_join(cenacs_hh %>% select(PUMA5CE, scale))
 
 #### Generate hh coordinates based on census tract and gridded pop ----
 # Using parallel for toy example here is a little overkill...
-cl <- makeCluster(2)
+cl <- makeCluster(ncore)
 registerDoSNOW(cl)
 
 #pb <- tkProgressBar(max = nrow(cenacs))
