@@ -103,6 +103,7 @@ wp_db <- wp %>%
   select(locid, wid2, worker, naics, essential = ess_class) %>%
   mutate(essential = case_when(
     is.na(essential) ~ "n",
+    essential == "" ~ "n",
     essential == "Essential" ~ "y",
     essential == "Essential*" ~ "y",
     essential == "Nonessential" ~ "n"
