@@ -25,5 +25,6 @@ p1 <- ggplot() +
   geom_sf(data = hh_xy1, pch = ".", colour = "#0000FF10") +
   geom_sf(data = wp1, pch = ".", colour = "#FF000010") +
   labs(title = "Household (blue) and Workplaces (red)") +
-  theme_bw()
+  theme_bw() +
+  theme(plot.title = element_text(size = rel(1.1), hjust = 0.5))
 ggsave("hhwp.png", p1, dpi = 320, width = 20, height = 20, units = "cm")
