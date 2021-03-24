@@ -1,22 +1,28 @@
 library(tidyverse)
 library(lubridate)
 
-ll <- read_csv("../flovid19-data/linelist_latest.csv")
+ll <- data.table::fread("../flovid19-data/linelist_latest.csv")
 
 ll$EventDate <- ymd_hms(ll$EventDate) %>% as.Date
 ll$ChartDate <- ymd_hms(ll$ChartDate) %>% as.Date
+# ll$EventDate <- ymd_hms(ll$EventDate)
+# ll$ChartDate <- ymd_hms(ll$ChartDate)
 ll$ret_day <- as.numeric(ll$ChartDate - ll$EventDate)
 
 #### Empirical (alpha = shape, beta = scale)
-dt <- seq(ymd("2020-03-01"), ymd("2020-08-15"), by = 1)
+dt <- seq(ymd("2020-03-08"), ymd("2020-12-01"), by = 1)
 alpha <- beta <- rep(NA, length(dt))
-expect <- variance <- rep(NA, length(dt))
+expect <- variance <- medians <- rep(NA, length(dt))
+lqi <- uqi <- rep(NA, length(dt))
 for (i in 1:length(dt)) {
   ll1 <- ll %>%
     filter(EventDate == dt[i]) %>%
-    filter(ret_day >= 0)
+    filter(ret_day >= 0, ret_day <= 45)
   
   expect[i] <- mean(ll1$ret_day)
+  medians[i] <- median(ll1$ret_day)
+  lqi[i] <- quantile(ll1$ret_day, 0.25)
+  uqi[i] <- quantile(ll1$ret_day, 0.75)
   variance[i] <- var(ll1$ret_day)
   alpha[i] <- expect[i]^2 / variance[i]
   beta[i] <- variance[i] / expect[i]
@@ -27,6 +33,17 @@ plot(dt, alpha, type = 'l')
 plot(dt, expect, type = 'l', ylab = "Expectation")
 plot(dt, beta, type = 'l')
 plot(dt, sqrt(variance), type = 'l', ylab = "Standard Deviation")
+
+ggplot(data.frame(dt=dt, expect=medians, lqi = lqi, uqi = uqi)) +
+  geom_line(aes(x=dt, y=expect), lwd = 1.0) +
+  geom_ribbon(aes(x=dt, ymin = lqi, ymax = uqi), alpha = 0.3) +
+  scale_x_date(date_breaks = "1 month", date_labels = "%b") +
+  scale_y_log10() +
+  labs(x = "", y = "Days", title = "Case reporting delay") +
+  ggpubr::theme_pubclean(base_size = 9) +
+  theme(legend.title = element_blank(),
+        panel.grid.major.x = element_line(linetype = "dotted", color = "grey"))
+ggsave("fig/case_report_delay.png", width = 16, height = 8, units = "cm")
 
 #### Smooth using splines
 library(mgcv)

@@ -12,6 +12,10 @@ cty-sim/data
 cty-sim/output
 cty-sim/*.tgz
 cty-sim/sim_pop-*/
+pseudo-sim/data
+pseudo-sim/output
+pseudo-sim/*.tgz
+pseudo-sim/sim_pop-*/
 state-sim/data
 state-sim/output
 state-sim/*.tgz
