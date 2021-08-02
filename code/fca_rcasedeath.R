@@ -53,6 +53,20 @@ for (i in 1:length(counties)) {
       rename(rhosp = RNewHosp)
   }
   
+  df <- df %>%
+    filter(Date <= ymd("2021-05-26"))
   outfile <- paste0("ts/rcasedeath-", tolower(nombre), ".csv")
   fwrite(df, outfile)
 }
+
+#### Merging with CDC data
+cdc_data <- fread("data/data_table_for_daily_case_trends__florida.csv")
+cdc_data$Date <- mdy(cdc_data$Date)
+cdc_data <- cdc_data %>%
+  filter(Date > ymd("2021-05-26")) %>%
+  select(Date, rcase = `New Cases`)
+df <- bind_rows(df, cdc_data)
+df <- df %>%
+  arrange(Date)
+plot(df$Date, df$rcase, type="l")
+fwrite(df, outfile)
