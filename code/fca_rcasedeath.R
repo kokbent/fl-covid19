@@ -4,21 +4,6 @@ library(data.table)
 library(lubridate)
 library(googlesheets4)
 
-if (packageVersion("googlesheets4") == "0.2.0") {
-  gs4_auth("kokbent@gmail.com")
-} else {
-  sheets_auth("kokbent@gmail.com")
-}
-
-dat <- sheets_read("1EUr3mhs1PnN4HrF4HgYH1EalQwOgH1nwhHddpZ-fHJg") %>%
-  filter(!is.na(CRDeath))
-dat$Date <- as.Date(dat$Date)
-
-download.file("https://opendata.arcgis.com/datasets/0fede0f25af1408683370cde9b492e7c_0.csv",
-              "data/FCA_county.csv")
-download.file("https://opendata.arcgis.com/datasets/249335581cbf4745a8cbc94f413ce7eb_0.csv",
-              "data/FCA_daily.csv")
-
 daily <- fread("data/FCA_daily.csv")
 cnt <- fread("data/FCA_county.csv")
 
@@ -48,10 +33,10 @@ for (i in 1:length(counties)) {
     summarise(rcase = sum(cases), rdeath = sum(deaths_rep)) %>%
     arrange(Date)
   
-  if(i == 7) {
-    df <- df %>% left_join(dat[,c("Date", "RNewHosp")]) %>%
-      rename(rhosp = RNewHosp)
-  }
+  # if(i == 7) {
+  #   df <- df %>% left_join(dat[,c("Date", "RNewHosp")]) %>%
+  #     rename(rhosp = RNewHosp)
+  # }
   
   df <- df %>%
     filter(Date <= ymd("2021-05-26"))
@@ -69,4 +54,13 @@ df <- bind_rows(df, cdc_data)
 df <- df %>%
   arrange(Date)
 plot(df$Date, df$rcase, type="l")
+
+cdc_death <- fread("data/data_table_for_daily_death_trends__florida.csv")
+cdc_death$Date <- mdy(cdc_death$Date)
+cdc_death <- cdc_death %>%
+  select(Date, death_incd = `New Deaths`)
+
+df <- df %>%
+  left_join(cdc_death)
+
 fwrite(df, outfile)
