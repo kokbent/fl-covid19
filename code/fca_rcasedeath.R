@@ -45,7 +45,7 @@ for (i in 1:length(counties)) {
 }
 
 #### Merging with CDC data
-cdc_data <- fread("data/data_table_for_daily_case_trends__florida.csv")
+cdc_data <- fread("data/data_table_for_daily_case_trends__florida2.csv")
 cdc_data$Date <- mdy(cdc_data$Date)
 cdc_data <- cdc_data %>%
   filter(Date > ymd("2021-05-26")) %>%
@@ -55,7 +55,7 @@ df <- df %>%
   arrange(Date)
 plot(df$Date, df$rcase, type="l")
 
-cdc_death <- fread("data/data_table_for_daily_death_trends__florida.csv")
+cdc_death <- fread("data/data_table_for_daily_death_trends__florida2.csv")
 cdc_death$Date <- mdy(cdc_death$Date)
 cdc_death <- cdc_death %>%
   select(Date, death_incd = `New Deaths`)
