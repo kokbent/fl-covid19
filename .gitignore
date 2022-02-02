@@ -6,7 +6,6 @@ fig/
 etc/
 output/*
 *.xlsx
-data/*
 tmp/
 cty-sim/data
 cty-sim/output
