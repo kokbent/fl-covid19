@@ -61,7 +61,7 @@ excess2 <- excess1 %>%
   mutate(exp_n = mean(n[Year < 2020])) %>%
   ungroup() %>%
   mutate(exp_n = ifelse(!is.na(exp_n), exp_n, exp_n[Week == 52][1])) %>%
-  filter(week_end_date >= ymd("2020-01-11"), week_end_date <= ymd("2022-03-19")) %>%
+  filter(week_end_date >= ymd("2020-01-11"), week_end_date <= ymd("2022-04-30")) %>%
   mutate(diff = n - exp_n,
          base_diff = mean(diff[week_end_date <= ymd("2020-03-28")]),
          adj_diff = diff - base_diff)
